@@ -1,0 +1,36 @@
+doctype html
+html
+  head
+    meta(charset="UTF-8")
+    title Purchase Invoice
+    style.
+      body { font-family: Arial, sans-serif; padding: 20px; }
+      h1, h2, h3 { text-align: center; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      th, td { border: 1px solid black; padding: 8px; text-align: left; }
+      .total { text-align: right; font-weight: bold; }
+
+  body
+    h1 Purchase Invoice
+    p Date: #{moment(model.date).format(dateFormat)}
+    p Supplier: #{model.supplier.name}
+    p Status: #{model.status}
+
+    table
+      thead
+        tr
+          th # 
+          th Item Name
+          th Quantity
+          th Price
+          th Total
+      tbody
+        each item, index in model.items
+          tr
+            td #{index + 1}
+            td #{item.inventoryItem?.itemName || 'N/A'}
+            td #{item.quantity}
+            td #{moneyFormatter(item.price)}
+            td #{moneyFormatter(item.quantity * item.price)}
+
+    h2.total Total Amount: #{moneyFormatter(model.totalAmount)}

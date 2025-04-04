@@ -1,0 +1,82 @@
+/* summary_card.css */
+
+.whiteBox {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 35px 45px 50px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease-in-out;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    
+  }
+  
+  .whiteBox:hover {
+    box-shadow: 0 175px 150px rgba(19, 17, 17, 0.12);
+  }
+  
+  .pad15 {
+    padding: 16px;
+  }
+  
+  .strong {
+    font-weight: 600;
+  }
+  
+  .summary-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #22075e;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .summary-card-prefix {
+    font-size: 14px;
+    color: #595959;
+    white-space: nowrap;
+    text-align: left;
+  }
+  
+  .summary-card-tag {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 5px 10px;
+    border-radius: 6px;
+    direction: ltr;
+  }
+  
+  .summary-card-spin {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+  
+  .ant-tag {
+    width: 100%;
+    text-align: center;
+    font-size: 16px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .ant-tag-success {
+    background-color: #f6ffed;
+    color: #52c41a;
+  }
+  .ant-tag-warning {
+    background-color: #fffbe6;
+    color: #faad14;
+  }
+  .ant-tag-danger {
+    background-color: #fff1f0;
+    color: #f5222d;
+  }  
