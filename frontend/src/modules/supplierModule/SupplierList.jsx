@@ -1,19 +1,96 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, message, Modal, Form, Input, Popconfirm, Space } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getSuppliers, updateSupplier, deleteSupplier } from './service';
+import {
+  Table,
+  Button,
+  message,
+  Modal,
+  Form,
+  Input,
+  Popconfirm,
+  Space,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
+import {
+  getSuppliers,
+  updateSupplier,
+  deleteSupplier,
+} from './service';
 
 const SupplierList = ({ onAddClick }) => {
-  console.log("supplierList opening");
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [form] = Form.useForm();
 
+  // ✅ Pre-fill form when editingSupplier is set
+  useEffect(() => {
+    if (editingSupplier && editModalVisible) {
+      form.setFieldsValue(editingSupplier);
+    }
+  }, [editingSupplier, editModalVisible, form]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const response = await getSuppliers();
+      console.log('Full response:', response);
+
+      if (response?.result && Array.isArray(response.result)) {
+        setSuppliers(response.result);
+      } else {
+        setSuppliers([]);
+        message.warning('No suppliers found');
+      }
+    } catch (error) {
+      console.error('Error loading suppliers:', error);
+      message.error('Failed to load suppliers');
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const handleEdit = (record) => {
-    console.log("Editing supplier:", record)
-  }
+    console.log('Editing supplier:', record);
+    setEditingSupplier(record);
+    setEditModalVisible(true);
+  };
+
+  const handleEditSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      await updateSupplier(editingSupplier._id, values);
+      message.success('Supplier updated successfully');
+      setEditModalVisible(false);
+      form.resetFields();
+      setEditingSupplier(null);
+      loadData();
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      message.error('Failed to update supplier');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteSupplier(id);
+      message.success('Supplier deleted successfully');
+      loadData();
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      message.error('Failed to delete supplier');
+    }
+  };
+
   const columns = [
     {
       title: 'Name',
@@ -49,9 +126,7 @@ const SupplierList = ({ onAddClick }) => {
           <Button
             type="primary"
             icon={<EditOutlined />}
-            onClick={() => {
-              handleEdit(record)
-            }}
+            onClick={() => handleEdit(record)}
           >
             Edit
           </Button>
@@ -71,63 +146,16 @@ const SupplierList = ({ onAddClick }) => {
     },
   ];
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const response = await getSuppliers();
-      console.log('Full response:', response);
-      
-      if (response?.result && Array.isArray(response.result)) {
-        console.log('Supplier data:', response.result);
-        setSuppliers(response.result);
-      } else {
-        console.log('No results array in response:', response);
-        setSuppliers([]);
-        message.warning('No suppliers found');
-      }
-    } catch (error) {
-      console.error('Error loading suppliers:', error);
-      message.error('Failed to load suppliers');
-      setSuppliers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-
-
-  const handleEditSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      await updateSupplier(editingSupplier._id, values);
-      message.success('Supplier updated successfully');
-      setEditModalVisible(false);
-      form.resetFields();
-      loadData();
-    } catch (error) {
-      console.error('Error updating supplier:', error);
-      message.error('Failed to update supplier');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await deleteSupplier(id);
-      message.success('Supplier deleted successfully');
-      loadData();
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
-      message.error('Failed to delete supplier');
-    }
-  };
-
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <div>
           {suppliers.length > 0 && (
             <span style={{ fontSize: '14px' }}>
@@ -135,23 +163,20 @@ const SupplierList = ({ onAddClick }) => {
             </span>
           )}
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          onClick={onAddClick}
-        >
+        <Button type="primary" icon={<PlusOutlined />} onClick={onAddClick}>
           Add Supplier
         </Button>
       </div>
+
       <Table
         columns={columns}
         dataSource={suppliers}
         rowKey="_id"
         loading={loading}
-        pagination={{ 
+        pagination={{
           defaultPageSize: 10,
           showSizeChanger: true,
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
         }}
       />
 
@@ -162,12 +187,10 @@ const SupplierList = ({ onAddClick }) => {
         onCancel={() => {
           setEditModalVisible(false);
           form.resetFields();
+          setEditingSupplier(null);
         }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-        >
+        <Form form={form} layout="vertical">
           <Form.Item
             name="name"
             label="Supplier Name"
@@ -175,7 +198,7 @@ const SupplierList = ({ onAddClick }) => {
           >
             <Input />
           </Form.Item>
-          
+
           <Form.Item
             name="contactPerson"
             label="Contact Person"
@@ -183,7 +206,7 @@ const SupplierList = ({ onAddClick }) => {
           >
             <Input />
           </Form.Item>
-          
+
           <Form.Item
             name="phone"
             label="Phone"
@@ -191,29 +214,23 @@ const SupplierList = ({ onAddClick }) => {
           >
             <Input />
           </Form.Item>
-          
+
           <Form.Item
             name="email"
             label="Email"
             rules={[
               { required: true, message: 'Please enter email' },
-              { type: 'email', message: 'Please enter a valid email' }
+              { type: 'email', message: 'Please enter a valid email' },
             ]}
           >
             <Input />
           </Form.Item>
-          
-          <Form.Item
-            name="gstin"
-            label="GSTIN"
-          >
+
+          <Form.Item name="gstin" label="GSTIN">
             <Input />
           </Form.Item>
-          
-          <Form.Item
-            name="paymentTerms"
-            label="Payment Terms"
-          >
+
+          <Form.Item name="paymentTerms" label="Payment Terms">
             <Input />
           </Form.Item>
         </Form>
