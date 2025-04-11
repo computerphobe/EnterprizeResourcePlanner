@@ -1,28 +1,27 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectAuth } from '@/redux/auth/selectors';
 
-// Function to get user role from token (Modify this as per your auth system)
-const getUserRole = () => {
-  const token = localStorage.getItem('token'); 
-  if (!token) return null;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1])); // Decoding JWT token
-    return payload.role || null;
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return null;
-  }
-};
-
-t
-const ProtectedRoute = ({ allowedRoles }) => {
-  const userRole = getUserRole();
+// Updated ProtectedRoute to use Redux state for role checking
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { current: user, isLoggedIn } = useSelector(selectAuth);
+  console.log('ProtectedRoute checking access:', { user, isLoggedIn, allowedRoles });
   
-  if (!userRole) return <Navigate to="/login" replace />; // Redirect if not logged in
-  if (!allowedRoles.includes(userRole)) return <Navigate to="/unauthorized" replace />; // Redirect if unauthorized
-
-  return <Outlet />; 
+  // If not logged in, redirect to login
+  if (!isLoggedIn || !user) {
+    console.log('User not logged in, redirecting to login');
+    return <Navigate to="/login" replace />;
+  }
+  
+  // If no specific roles required or user has allowed role, grant access
+  if (allowedRoles.length === 0 || allowedRoles.includes(user.role)) {
+    console.log('Access granted to route');
+    return children;
+  }
+  
+  // User doesn't have required role, redirect to default page
+  console.log('Access denied - user role:', user.role, 'required:', allowedRoles);
+  return <Navigate to="/" replace />;
 };
 
 export default ProtectedRoute;

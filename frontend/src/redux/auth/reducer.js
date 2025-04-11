@@ -1,29 +1,37 @@
 import * as actionTypes from './types';
 
 const INITIAL_STATE = {
-  current: {},
+  current: null,
   isLoggedIn: false,
   isLoading: false,
   isSuccess: false,
 };
 
 const authReducer = (state = INITIAL_STATE, action) => {
+  console.log('authReducer action:', action);
+
   switch (action.type) {
     case actionTypes.REQUEST_LOADING:
       return {
         ...state,
         isLoggedIn: false,
         isLoading: true,
+        isSuccess: false,
       };
-    case actionTypes.REQUEST_FAILED:
-      return INITIAL_STATE;
 
     case actionTypes.REQUEST_SUCCESS:
+      console.log("payload received by reducer:", action.payload);
       return {
         current: action.payload,
         isLoggedIn: true,
         isLoading: false,
         isSuccess: true,
+      };
+
+    case actionTypes.REQUEST_FAILED:
+      return {
+        ...INITIAL_STATE,
+        isLoading: false,
       };
 
     case actionTypes.REGISTER_SUCCESS:
@@ -33,15 +41,14 @@ const authReducer = (state = INITIAL_STATE, action) => {
         isLoading: false,
         isSuccess: true,
       };
+
     case actionTypes.LOGOUT_SUCCESS:
       return INITIAL_STATE;
 
     case actionTypes.LOGOUT_FAILED:
       return {
-        current: action.payload,
-        isLoggedIn: true,
+        ...state,
         isLoading: false,
-        isSuccess: true,
       };
 
     default:

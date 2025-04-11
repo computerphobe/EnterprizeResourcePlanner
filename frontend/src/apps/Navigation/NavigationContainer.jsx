@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Drawer, Layout, Menu } from 'antd';
+import { useSelector } from 'react-redux';
 
 import { useAppContext } from '@/context/appContext';
+import { selectAuth } from '@/redux/auth/selectors';
 
 import useLanguage from '@/locale/useLanguage';
 import logoIcon from '@/style/images/logo-icon.svg';
@@ -28,6 +30,7 @@ import {
   ReconciliationOutlined,
   SwapOutlined,
   ShoppingCartOutlined,
+  LinuxOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -47,98 +50,191 @@ function Sidebar({ collapsible, isMobile = false }) {
   const [showLogoApp, setLogoApp] = useState(isNavMenuClose);
   const [currentPath, setCurrentPath] = useState(location.pathname.slice(1));
 
+  const { current: currentUser } = useSelector(selectAuth);
+  const userRole = currentUser?.role || 'guest';
+  
   const translate = useLanguage();
   const navigate = useNavigate();
 
-  const items = [
-    {
-      key: 'dashboard',
-      icon: <DashboardOutlined />,
-      label: <Link to={'/'}>{translate('dashboard')}</Link>,
-    },
-    {
-      key: 'customer',
-      icon: <CustomerServiceOutlined />,
-      label: <Link to={'/customer'}>{translate('customers')}</Link>,
-    },
+  // Define menu items by role
+  const getMenuItemsForRole = (role) => {
+    // Common menu items for all logged-in users
+    const commonItems = [
+      {
+        key: 'dashboard',
+        icon: <DashboardOutlined />,
+        label: <Link to={'/'}>{translate('dashboard')}</Link>,
+      },
+      {
+        key: 'about',
+        label: <Link to={'/about'}>{translate('about')}</Link>,
+        icon: <ReconciliationOutlined />,
+      },
+      {
+        key: 'profile',
+        label: <Link to={'/profile'}>{translate('profile')}</Link>,
+        icon: <UserOutlined />,
+      },
+    ];
 
-    {
-      key: 'invoice',
-      icon: <ContainerOutlined />,
-      label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
-    },
-    {
-      key: 'quote',
-      icon: <FileSyncOutlined />,
-      label: <Link to={'/quote'}>{translate('quote')}</Link>,
-    },
-    {
-      key: 'payment',
-      icon: <CreditCardOutlined />,
-      label: <Link to={'/payment'}>{translate('payments')}</Link>,
-    },
+    // Role-specific menu items
+    const roleMenuItems = {
+      owner: [
+        {
+          key:'register',
+          icon: <LinuxOutlined />,
+          label: <Link to={'/register'}>{translate('register')}</Link>
+        },
+        {
+          key: 'customer',
+          icon: <CustomerServiceOutlined />,
+          label: <Link to={'/customer'}>{translate('customers')}</Link>,
+        },
+        {
+          key: 'invoice',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
+        },
+        {
+          key: 'quote',
+          icon: <FileSyncOutlined />,
+          label: <Link to={'/quote'}>{translate('quote')}</Link>,
+        },
+        {
+          key: 'payment',
+          icon: <CreditCardOutlined />,
+          label: <Link to={'/payment'}>{translate('payments')}</Link>,
+        },
+        {
+          key: 'paymentMode',
+          label: <Link to={'/payment/mode'}>{translate('payments_mode')}</Link>,
+          icon: <WalletOutlined />,
+        },
+        {
+          key: 'taxes',
+          label: <Link to={'/taxes'}>{translate('taxes')}</Link>,
+          icon: <ShopOutlined />,
+        },
+        {
+          key: 'generalSettings',
+          label: <Link to={'/settings'}>{translate('settings')}</Link>,
+          icon: <SettingOutlined />,
+        },
+        {
+          key: 'inventory',
+          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
+          icon: <TagsOutlined />,
+        },
+        {
+          key: 'returns',
+          label: <Link to={'/returns'}>{translate('returns')}</Link>,
+          icon: <SwapOutlined />,
+        },
+        {
+          key: 'supplier',
+          label: <Link to={'/supplier'}>{translate('suppliers')}</Link>,
+          icon: <UserOutlined />
+        },
+        {
+          key: 'purchase',
+          label: <Link to={'/purchase'}>{translate('purchases')}</Link>,
+          icon: <ShoppingCartOutlined />
+        }
+      ],
+      doctor: [
+        {
+          key: 'orders',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/orders'}>{translate('orders')}</Link>,
+        },
+        {
+          key: 'new-order',
+          icon: <FileSyncOutlined />,
+          label: <Link to={'/orders/new'}>{translate('new_order')}</Link>,
+        },
+        {
+          key: 'returns',
+          label: <Link to={'/returns'}>{translate('returns')}</Link>,
+          icon: <SwapOutlined />,
+        },
+        {
+          key: 'new-return',
+          label: <Link to={'/returns/new'}>{translate('new_return')}</Link>,
+          icon: <FileOutlined />,
+        }
+      ],
+      hospital: [
+        {
+          key: 'orders',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/orders'}>{translate('orders')}</Link>,
+        },
+        {
+          key: 'inventory',
+          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
+          icon: <TagsOutlined />,
+        }
+      ],
+      distributor: [
+        {
+          key: 'orders',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/orders'}>{translate('orders')}</Link>,
+        },
+        {
+          key: 'inventory',
+          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
+          icon: <TagsOutlined />,
+        },
+        {
+          key: 'supplier',
+          label: <Link to={'/supplier'}>{translate('suppliers')}</Link>,
+          icon: <UserOutlined />
+        }
+      ],
+      deliverer: [
+        {
+          key: 'deliveries',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/deliveries'}>{translate('deliveries')}</Link>,
+        }
+      ],
+      // Default role (if role not found)
+      default: []
+    };
 
-    {
-      key: 'paymentMode',
-      label: <Link to={'/payment/mode'}>{translate('payments_mode')}</Link>,
-      icon: <WalletOutlined />,
-    },
-    {
-      key: 'taxes',
-      label: <Link to={'/taxes'}>{translate('taxes')}</Link>,
-      icon: <ShopOutlined />,
-    },
-    {
-      key: 'generalSettings',
-      label: <Link to={'/settings'}>{translate('settings')}</Link>,
-      icon: <SettingOutlined />,
-    },
-    {
-      key: 'about',
-      label: <Link to={'/about'}>{translate('about')}</Link>,
-      icon: <ReconciliationOutlined />,
-    },
-    {
-      key: 'inventory',
-      label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
-      icon: <TagsOutlined />,
-    },
-    {
-      key: 'returns',
-      label: <Link to={'/returns'}>{translate('returns')}</Link>,
-      icon: <SwapOutlined />,
-    },
-    {
-      key: 'supplier',
-      label: <Link to={'/supplier'}>{translate('suppliers')}</Link>,
-      icon: <UserOutlined />
-    },
-    {
-      key: 'purchase',
-      label: <Link to={'/purchase'}>{translate('purchases')}</Link>,
-      icon: <ShoppingCartOutlined />
-    }
-  ];
+    // Get role-specific menu items or use default if role not defined
+    const roleItems = roleMenuItems[role] || roleMenuItems.default;
+    
+    // Combine common items with role-specific items
+    return [...commonItems, ...roleItems];
+  };
 
+  // Get menu items based on user role
+  const items = getMenuItemsForRole(userRole);
+
+  // Handle path change without causing infinite loops
   useEffect(() => {
-    if (location)
-      if (currentPath !== location.pathname) {
-        if (location.pathname === '/') {
-          setCurrentPath('dashboard');
-        } else setCurrentPath(location.pathname.slice(1));
+    if (location) {
+      const newPath = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1);
+      if (currentPath !== newPath) {
+        setCurrentPath(newPath);
       }
-  }, [location, currentPath]);
+    }
+  }, [location]);
 
+  // Handle logo animation without causing infinite loops
   useEffect(() => {
+    // Set immediately when closing navigation
     if (isNavMenuClose) {
-      setLogoApp(isNavMenuClose);
+      setLogoApp(true);
+    } else {
+      // Add delay when opening navigation
+      const timer = setTimeout(() => {
+        setLogoApp(false);
+      }, 200);
+      return () => clearTimeout(timer);
     }
-    const timer = setTimeout(() => {
-      if (!isNavMenuClose) {
-        setLogoApp(isNavMenuClose);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
   }, [isNavMenuClose]);
   const onCollapse = () => {
     navMenu.collapse();

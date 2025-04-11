@@ -1,46 +1,55 @@
 import React from 'react';
-import { Form, Input, Checkbox } from 'antd';
+import { Form, Input, Checkbox, Select } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
 import useLanguage from '@/locale/useLanguage';
 
 export default function LoginForm() {
   const translate = useLanguage();
+console.log('LoginForm component loaded'); // Debugging line
   return (
     <div>
       <Form.Item
         label={translate('email')}
         name="email"
         rules={[
-          {
-            required: true,
-          },
-          {
-            type: 'email',
-          },
+          { required: true },
+          { type: 'email' },
         ]}
       >
         <Input
           prefix={<UserOutlined className="site-form-item-icon" />}
-          placeholder={'admin@demo.com'}
+          placeholder="admin@demo.com"
           type="email"
           size="large"
         />
       </Form.Item>
+
       <Form.Item
         label={translate('password')}
         name="password"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
+        rules={[{ required: true }]}
       >
         <Input.Password
           prefix={<LockOutlined className="site-form-item-icon" />}
-          placeholder={'admin123'}
+          placeholder="admin123"
           size="large"
         />
+      </Form.Item>
+
+      {/* 🔽 Role Selector */}
+      <Form.Item
+        label="Role"
+        name="role"
+        rules={[{ required: true, message: 'Please select your role!' }]}
+      >
+        <Select placeholder="Select Role" size="large">
+          <Select.Option value="owner">Admin</Select.Option>
+          <Select.Option value="doctor">Doctor</Select.Option>
+          <Select.Option value="hospital">Hospital</Select.Option>
+          <Select.Option value="deliverer">Deliverer</Select.Option>
+          <Select.Option value="distributor">Distributor</Select.Option>
+        </Select>
       </Form.Item>
 
       <Form.Item>

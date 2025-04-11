@@ -20,97 +20,131 @@ export default function AutoCompleteAsync({
   onChange, /// this is for update
 }) {
   const translate = useLanguage();
-
   const addNewValue = { value: 'redirectURL', label: `+ ${translate(redirectLabel)}` };
-
+  
+  // Maintain refs to prevent infinite updates
+  const initialMountDone = useRef(false);
+  const isSearching = useRef(false);
+  const ignoreNextValueChange = useRef(false);
+  
+  // Component state
   const [selectOptions, setOptions] = useState([]);
   const [currentValue, setCurrentValue] = useState(undefined);
-
-  const isUpdating = useRef(true);
-  const isSearching = useRef(false);
-
   const [searching, setSearching] = useState(false);
-
   const [valToSearch, setValToSearch] = useState('');
   const [debouncedValue, setDebouncedValue] = useState('');
-
+  
   const navigate = useNavigate();
 
+  // Process API search results
+  const asyncSearch = async (options) => {
+    return await request.search({ entity, options });
+  };
+
+  let { onFetch, result, isSuccess, isLoading } = useOnFetch();
+  
+  // Format labels for display
+  const labels = (optionField) => {
+    return displayLabels.map((x) => optionField[x]).join(' ');
+  };
+
+  // Handle selection change - called by the Select component
   const handleSelectChange = (newValue) => {
-    isUpdating.current = false;
-    // setCurrentValue(value[outputValue] || value); // set nested value or value
-    // onChange(newValue[outputValue] || newValue);
-    if (onChange) {
-      if (newValue) onChange(newValue[outputValue] || newValue);
-    }
+    // Avoid triggering the value useEffect
+    ignoreNextValueChange.current = true;
+    
+    // Handle redirection
     if (newValue === 'redirectURL' && withRedirect) {
       navigate(urlToRedirect);
+      return;
+    }
+    
+    // Process the value - extract the outputValue if it exists
+    const processedValue = newValue ? 
+      (typeof newValue === 'object' && newValue !== null && outputValue in newValue ? 
+        newValue[outputValue] : newValue) : 
+      undefined;
+    
+    // Update local state
+    setCurrentValue(processedValue);
+    
+    // Propagate change to parent component
+    if (onChange && newValue) {
+      onChange(processedValue);
     }
   };
 
-  const handleOnSelect = (value) => {
-    setCurrentValue(value[outputValue] || value); // set nested value or value
-  };
-
+  // Set up debounce for search
   const [, cancel] = useDebounce(
     () => {
-      //  setState("Typing stopped");
       setDebouncedValue(valToSearch);
     },
     500,
     [valToSearch]
   );
 
-  const asyncSearch = async (options) => {
-    return await request.search({ entity, options });
-  };
-
-  let { onFetch, result, isSuccess, isLoading } = useOnFetch();
-
-  const labels = (optionField) => {
-    return displayLabels.map((x) => optionField[x]).join(' ');
-  };
-
+  // Fetch search results when debounced value changes
   useEffect(() => {
-    const options = {
-      q: debouncedValue,
-      fields: searchFields,
-    };
-    const callback = asyncSearch(options);
-    onFetch(callback);
-
+    if (debouncedValue) {
+      const options = {
+        q: debouncedValue,
+        fields: searchFields,
+      };
+      const callback = asyncSearch(options);
+      onFetch(callback);
+    }
     return () => {
       cancel();
     };
   }, [debouncedValue]);
 
+  // Handle search input change
   const onSearch = (searchText) => {
-    isSearching.current = true;
-    setSearching(true);
-    // setOptions([]);
-    // setCurrentValue(undefined);
-    setValToSearch(searchText);
+    if (searchText) {
+      isSearching.current = true;
+      setSearching(true);
+      setValToSearch(searchText);
+    }
   };
-
+  
+  // Update options when search results change
   useEffect(() => {
-    if (isSuccess) {
-      setOptions(result);
-    } else {
+    if (isSuccess && isSearching.current) {
+      setOptions(result || []);
+      isSearching.current = false;
+    } else if (!isSuccess && isSearching.current) {
       setSearching(false);
-      // setCurrentValue(undefined);
-      // setOptions([]);
     }
   }, [isSuccess, result]);
+    // Handle initial value and value prop changes
   useEffect(() => {
-    // this for update Form , it's for setField
-    if (value && isUpdating.current) {
-      setOptions([value]);
-      setCurrentValue(value[outputValue] || value); // set nested value or value
-      onChange(value[outputValue] || value);
-      isUpdating.current = false;
+    // Skip if we're handling an internal state change
+    if (ignoreNextValueChange.current) {
+      ignoreNextValueChange.current = false;
+      return;
     }
-  }, [value]);
-
+    
+    // Only process value if it's defined and different from current value
+    if (value !== undefined) {
+      // Extract actual value to use (handling nested objects)
+      const valueToUse = value && typeof value === 'object' && outputValue in value 
+        ? value[outputValue] 
+        : value;
+      
+      // Update value only if it's actually changing
+      if (valueToUse !== currentValue) {
+        setCurrentValue(valueToUse);
+        
+        // Only update options on initial mount
+        if (!initialMountDone.current) {
+          if (typeof value === 'object') {
+            setOptions([value]);
+          }
+          initialMountDone.current = true;
+        }
+      }
+    }
+  }, [value, outputValue, currentValue]);
   return (
     <Select
       loading={isLoading}
@@ -123,23 +157,38 @@ export default function AutoCompleteAsync({
       value={currentValue}
       onSearch={onSearch}
       onClear={() => {
-        // setOptions([]);
-        // setCurrentValue(undefined);
         setSearching(false);
       }}
       onChange={handleSelectChange}
       style={{ minWidth: '220px' }}
-      // onSelect={handleOnSelect}
     >
-      {selectOptions.map((optionField) => (
-        <Select.Option
-          key={optionField[outputValue] || optionField}
-          value={optionField[outputValue] || optionField}
-        >
-          {labels(optionField)}
+      {selectOptions.map((optionField) => {
+        // Handle both object values and primitives
+        const optionValue = typeof optionField === 'object' && optionField !== null
+          ? (optionField[outputValue] || optionField)
+          : optionField;
+        
+        // Generate a stable key
+        const optionKey = typeof optionValue === 'string' || typeof optionValue === 'number'
+          ? optionValue
+          : JSON.stringify(optionValue);
+          
+        return (
+          <Select.Option
+            key={optionKey}
+            value={optionValue}
+          >
+            {typeof optionField === 'object' && optionField !== null 
+              ? labels(optionField)
+              : String(optionField)}
+          </Select.Option>
+        );
+      })}
+      {withRedirect && (
+        <Select.Option value={addNewValue.value}>
+          {addNewValue.label}
         </Select.Option>
-      ))}
-      {withRedirect && <Select.Option value={addNewValue.value}>{addNewValue.label}</Select.Option>}
+      )}
     </Select>
   );
 }

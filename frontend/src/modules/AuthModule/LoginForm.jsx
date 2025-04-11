@@ -29,8 +29,10 @@ const LoginForm = () => {
         rules={[{ required: true, message: 'Please select your role!' }]}
       >
         <Select placeholder="Select Role">
-          <Select.Option value="admin">Admin</Select.Option>
+          <Select.Option value="owner">Admin</Select.Option>
           <Select.Option value="doctor">Doctor</Select.Option>
+          <Select.Option value="distributor">Distributor</Select.Option>
+          <Select.Option value="deliverer">Deliverer</Select.Option>
         </Select>
       </Form.Item>
 

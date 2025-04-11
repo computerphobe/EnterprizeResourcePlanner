@@ -36,7 +36,7 @@ export default function AppRouter() {
       const path = getAppNameByPath(location.pathname);
       app.open(path);
     }
-  }, [location]);
+  }, [location.pathname]);
 
   let element = useRoutes(routesList);
 

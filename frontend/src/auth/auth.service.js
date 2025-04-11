@@ -1,18 +1,20 @@
 import { API_BASE_URL } from '@/config/serverApiConfig';
-
 import axios from 'axios';
 import errorHandler from '@/request/errorHandler';
 import successHandler from '@/request/successHandler';
 
 export const login = async ({ loginData }) => {
   try {
+    console.log('Making login request with:', loginData);
     const response = await axios.post(
       API_BASE_URL + `login?timestamp=${new Date().getTime()}`,
       loginData
     );
 
     const { status, data } = response;
-
+    console.log('Auth response:', data);
+    
+    // Notify success/failure
     successHandler(
       { data, status },
       {
@@ -20,13 +22,31 @@ export const login = async ({ loginData }) => {
         notifyOnFailed: true,
       }
     );
+    
+    if (data?.success === true && data?.result) {
+      // Log the data structure to understand where role is stored
+      console.log('Auth success - checking role location:', {
+        directRole: data?.result?.role,
+        nestedRole: data?.result?.user?.role
+      });
+        // Figure out where the role is stored in the response
+      const role = data?.result?.role || data?.result?.user?.role;
+      console.log('Determined user role:', role);
+      
+      // We'll let the Redux actions handle routing
+      // No more direct window.location redirects here
+      // This prevents race conditions and infinite loops
+    }
+    
     return data;
   } catch (error) {
+    console.error('Login error:', error);
     return errorHandler(error);
   }
 };
 
 export const register = async ({ registerData }) => {
+  console.log('auth.service.js registerData', registerData);
   try {
     const response = await axios.post(API_BASE_URL + `register`, registerData);
 
@@ -82,10 +102,10 @@ export const resetPassword = async ({ resetPasswordData }) => {
     return errorHandler(error);
   }
 };
+
 export const logout = async () => {
   axios.defaults.withCredentials = true;
   try {
-    // window.localStorage.clear();
     const response = await axios.post(API_BASE_URL + `logout?timestamp=${new Date().getTime()}`);
     const { status, data } = response;
 
@@ -101,7 +121,3 @@ export const logout = async () => {
     return errorHandler(error);
   }
 };
-
-//  console.log(
-//    '🚀 Welcome to IDURAR ERP CRM! Did you know that we also offer commercial customization services? Contact us at hello@idurarapp.com for more information.'
-//  );
