@@ -42,13 +42,13 @@ console.log('LoginForm component loaded'); // Debugging line
         label="Role"
         name="role"
         rules={[{ required: true, message: 'Please select your role!' }]}
-      >
-        <Select placeholder="Select Role" size="large">
+      >        <Select placeholder="Select Role" size="large">
           <Select.Option value="owner">Admin</Select.Option>
           <Select.Option value="doctor">Doctor</Select.Option>
           <Select.Option value="hospital">Hospital</Select.Option>
           <Select.Option value="deliverer">Deliverer</Select.Option>
           <Select.Option value="distributor">Distributor</Select.Option>
+          <Select.Option value="accountant">Accountant</Select.Option>
         </Select>
       </Form.Item>
 

@@ -2,6 +2,7 @@ const createCRUDController = require('@/controllers/middlewaresControllers/creat
 const { routesList } = require('@/models/utils');
 const { globSync } = require('glob');
 const path = require('path');
+const dashboardController = require('./dashboardController');
 
 const pattern = './src/controllers/appControllers/*/**/';
 const controllerDirectories = globSync(pattern).map((filePath) => {
@@ -23,12 +24,14 @@ const appControllers = () => {
       throw new Error(err.message);
     }
   });
-
   routesList.forEach(({ modelName, controllerName }) => {
     if (!hasCustomControllers.includes(controllerName)) {
       controllers[controllerName] = createCRUDController(modelName);
     }
   });
+  
+  // Add dashboardController manually
+  controllers.dashboardController = dashboardController;
 
   return controllers;
 };

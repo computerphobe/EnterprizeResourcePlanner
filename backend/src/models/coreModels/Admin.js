@@ -26,11 +26,10 @@ const adminSchema = new Schema({
   created: {
     type: Date,
     default: Date.now,
-  },
-  role: {
+  },  role: {
     type: String,
     default: 'owner',
-    enum: ['owner','doctor', 'hospital', 'distributor', 'deliverer'],
+    enum: ['owner','doctor', 'hospital', 'distributor', 'deliverer', 'accountant'],
   },
 });
 

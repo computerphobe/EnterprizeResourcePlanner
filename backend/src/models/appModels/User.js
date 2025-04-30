@@ -14,25 +14,27 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
-  },
-  // Add role field
+  },  // Add role field
   role: {
     type: String,
-    enum: ['admin', 'doctor', 'hospital', 'deliverer', 'distributor'],
+    enum: ['admin', 'doctor', 'hospital', 'deliverer', 'distributor', 'accountant'],
     default: 'admin'
   },
   // Doctor specific fields (only required if role is doctor)
   hospitalName: {
     type: String,
-    required: function() { return this.role === 'doctor'; }
+    required: function() { return this.role === 'doctor'; },
+    default: function() { return this.role !== 'doctor' ? undefined : ''; }
   },
   specialization: {
     type: String,
-    required: function() { return this.role === 'doctor'; }
+    required: function() { return this.role === 'doctor'; },
+    default: function() { return this.role !== 'doctor' ? undefined : ''; }
   },
   registrationNumber: {
     type: String,
-    required: function() { return this.role === 'doctor'; }
+    required: function() { return this.role === 'doctor'; },
+    default: function() { return this.role !== 'doctor' ? undefined : ''; }
   },
   isDeleted: {
     type: Boolean,
@@ -42,4 +44,4 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('User', userSchema); 
+module.exports = mongoose.model('User', userSchema);

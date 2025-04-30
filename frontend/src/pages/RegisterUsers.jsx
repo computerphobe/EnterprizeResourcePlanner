@@ -12,25 +12,21 @@ const RegisterUser = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
-
-
+  
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const registerData = {
-        ...values,
-        name: values.name,
-        surname: values.surname,
-        role: values.role,
-        email: values.email,
-        password: values.password,
-      };
+      // No need to explicitly add fields that are already in values
+      // Just send the form values directly
+      const registerData = values;
+      
       console.log('registerData.. RegisterUsers.jsx', registerData);
       await register({ registerData });
       message.success('User registered successfully!');
       form.resetFields();
     } catch (error) {
-      message.error('Registration failed');
+      console.error('Registration error:', error);
+      message.error('Registration failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -55,10 +51,10 @@ const RegisterUser = () => {
         <Form.Item name="role" label="Role" rules={[{ required: true }]}>
           <Select placeholder="Select a role">
             <Option value="owner">Admin</Option>
-            <Option value="doctor">Doctor</Option>
-            <Option value="hospital">Hospital</Option>
+            <Option value="doctor">Doctor</Option>            <Option value="hospital">Hospital</Option>
             <Option value="deliverer">Deliverer</Option>
             <Option value="distributor">Small Distributor</Option>
+            <Option value="accountant">Accountant</Option>
           </Select>
         </Form.Item>
         <Form.Item>

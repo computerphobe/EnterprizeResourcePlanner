@@ -225,7 +225,6 @@ const request = {
       return errorHandler(error);
     }
   },
-
   upload: async ({ entity, id, jsonData }) => {
     try {
       includeToken();
@@ -238,6 +237,47 @@ const request = {
         notifyOnSuccess: true,
         notifyOnFailed: true,
       });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  
+  // Dashboard/financial data methods
+  getDashboard: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('/dashboard');
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  
+  getDashboardStats: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('/dashboard/stats');
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  
+  getRecentActivities: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('/dashboard/recent-activities');
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  
+  getFinancialData: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('/dashboard/financial-data');
       return response.data;
     } catch (error) {
       return errorHandler(error);

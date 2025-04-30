@@ -199,6 +199,28 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/deliveries'}>{translate('deliveries')}</Link>,
         }
       ],
+      accountant: [
+        {
+          key: 'invoices',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
+        },
+        {
+          key: 'payments',
+          icon: <CreditCardOutlined />,
+          label: <Link to={'/payment'}>{translate('payments')}</Link>,
+        },
+        {
+          key: 'expenses',
+          icon: <WalletOutlined />,
+          label: <Link to={'/expenses'}>{translate('expenses')}</Link>,
+        },
+        {
+          key: 'reports',
+          icon: <ReconciliationOutlined />,
+          label: <Link to={'/reports'}>{translate('financial_reports')}</Link>,
+        }
+      ],
       // Default role (if role not found)
       default: []
     };

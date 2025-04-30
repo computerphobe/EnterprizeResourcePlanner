@@ -6,6 +6,7 @@ import DoctorDashboard from '@/modules/DashboardModule/DoctorDashboard';
 import HospitalDashboard from '@/pages/Dashboards/hospital';
 import DistributorDashboard from '@/pages/Dashboards/distributor';
 import DelivererDashboard from '@/pages/Dashboards/deliverer';
+import AccountantDashboard from '@/pages/Dashboards/accountant';
 
 export default function Dashboard() {
   const { current: currentUser } = useSelector(selectAuth);
@@ -27,6 +28,8 @@ export default function Dashboard() {
       return <DistributorDashboard />;
     case 'deliverer':
       return <DelivererDashboard />;
+    case 'accountant':
+      return <AccountantDashboard />;
     default:
       // For any other role or if role is undefined, show the default dashboard
       return <DashboardModule />;
