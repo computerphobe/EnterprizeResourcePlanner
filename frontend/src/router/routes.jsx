@@ -35,13 +35,20 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const Inventory = lazy(() => import('@/pages/inventoryTable'));
 const About = lazy(() => import('@/pages/About'));
 
+// ✅ Delivery pages
+const DeliveryDashboard = lazy(() => import('@/pages/delivery/Dashboard'));
+const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
+const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
+const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
+const History = lazy(() => import('@/pages/delivery/History'));
+
 let routes = {
   expense: [],
   default: [
     { path: '/login', element: <Navigate to="/" /> },
     { path: '/logout', element: <Logout /> },
     { path: '/about', element: <About /> },
-    
+
     { path: '/customer', element: <Customer /> },
     { path: '/invoice', element: <Invoice /> },
     { path: '/invoice/create', element: <InvoiceCreate /> },
@@ -67,7 +74,7 @@ let routes = {
     { path: '/supplier', element: <SupplierPage /> },
     { path: '/register', element: <RegisterUser /> },
 
-    // ✅ Protected Role-Based Dashboards
+    // ✅ Role-based Dashboards
     { path: '/', element: <Dashboard /> },
     {
       path: '/doctor',
@@ -98,6 +105,48 @@ let routes = {
       element: (
         <ProtectedRoute allowedRoles={['deliverer']}>
           <DelivererDashboard />
+        </ProtectedRoute>
+      ),
+    },
+
+    // ✅ Delivery routes
+    {
+      path: '/delivery/dashboard',
+      element: (
+        <ProtectedRoute allowedRoles={['deliverer']}>
+          <DeliveryDashboard />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/delivery/current-orders',
+      element: (
+        <ProtectedRoute allowedRoles={['deliverer']}>
+          <CurrentOrders />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/delivery/pickup',
+      element: (
+        <ProtectedRoute allowedRoles={['deliverer']}>
+          <PickupConfirmation />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/delivery/confirmation',
+      element: (
+        <ProtectedRoute allowedRoles={['deliverer']}>
+          <DeliveryConfirmation />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: '/delivery/history',
+      element: (
+        <ProtectedRoute allowedRoles={['deliverer']}>
+          <History />
         </ProtectedRoute>
       ),
     },

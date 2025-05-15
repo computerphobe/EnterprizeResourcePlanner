@@ -193,12 +193,33 @@ function Sidebar({ collapsible, isMobile = false }) {
         }
       ],
       deliverer: [
-        {
-          key: 'deliveries',
-          icon: <ContainerOutlined />,
-          label: <Link to={'/deliveries'}>{translate('deliveries')}</Link>,
-        }
-      ],
+  {
+    key: 'deliverer-dashboard',
+    icon: <DashboardOutlined />,
+    label: <Link to={'/deliverer'}>{translate('dashboard')}</Link>,
+  },
+  {
+    key: 'delivery-current',
+    icon: <ContainerOutlined />,
+    label: <Link to={'/delivery/current-orders'}>{translate('current_orders')}</Link>,
+  },
+  {
+    key: 'delivery-pickup',
+    icon: <FileSyncOutlined />,
+    label: <Link to={'/delivery/pickup'}>{translate('pickup_confirmation')}</Link>,
+  },
+  {
+    key: 'delivery-delivered',
+    icon: <ReconciliationOutlined />,
+    label: <Link to={'/delivery/delivered'}>{translate('delivery_confirmation')}</Link>,
+  },
+  {
+    key: 'delivery-history',
+    icon: <FileOutlined />,
+    label: <Link to={'/delivery/history'}>{translate('delivery_history')}</Link>,
+  }
+],
+
       accountant: [
         {
           key: 'invoices',

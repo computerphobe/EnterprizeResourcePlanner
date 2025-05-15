@@ -1,14 +1,11 @@
-import { lazy, useEffect } from 'react';
-
-import {} from 'react-router-dom';
-import {} from 'react-router-dom';
-import { Navigate, useLocation, useRoutes } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useRoutes } from 'react-router-dom';
 import { useAppContext } from '@/context/appContext';
 
 import routes from './routes';
 
 export default function AppRouter() {
-  let location = useLocation();
+  const location = useLocation();
   const { state: stateApp, appContextAction } = useAppContext();
   const { app } = appContextAction;
 
@@ -26,9 +23,13 @@ export default function AppRouter() {
         }
       }
     }
-    
+
+    // Handle delivery routes
+    if (path.startsWith('/delivery')) return 'delivery';
+
     return 'default';
   }
+
   useEffect(() => {
     if (location.pathname === '/') {
       app.default();
@@ -38,7 +39,7 @@ export default function AppRouter() {
     }
   }, [location.pathname]);
 
-  let element = useRoutes(routesList);
+  const element = useRoutes(routesList);
 
   return element;
 }
