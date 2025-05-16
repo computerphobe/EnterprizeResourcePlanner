@@ -5,19 +5,23 @@ import { selectAuth } from '@/redux/auth/selectors';
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
   const { auth } = useSelector(selectAuth);
-  const role = auth?.user?.role;
+  const roleRaw = auth?.user?.role || '';
+  const role = roleRaw.trim().toLowerCase();
 
-  // ⛔ Not logged in at all
+  console.log('User role:', role);  // Debug: see actual role in console
+  const allowed = allowedRoles.map(r => r.toLowerCase());
+
+  // Not logged in at all
   if (!role) {
     return <Navigate to="/login" replace />;
   }
 
-  // ⛔ Logged in but unauthorized
-  if (!allowedRoles.includes(role)) {
+  // Logged in but unauthorized
+  if (!allowed.includes(role)) {
     return <Navigate to="/" replace />;
   }
 
-  // ✅ Authorized
+  // Authorized
   return children;
 };
 

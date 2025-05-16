@@ -1,10 +1,7 @@
-import PurchasePage from '@/pages/purchase';
-import SupplierPage from '@/pages/supplier';
 import { lazy } from 'react';
-import { Navigate } from 'react-router-dom';
+import ProtectedRoute from '@/components/Protectedroutes';
 
-import ProtectedRoute from '@/components/Protectedroutes'; // Make sure this path is correct
-
+// Lazy load your pages
 const Logout = lazy(() => import('@/pages/Logout.jsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
 const RegisterUser = lazy(() => import('@/pages/RegisterUsers.jsx'));
@@ -12,10 +9,6 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Customer = lazy(() => import('@/pages/Customer'));
 const Invoice = lazy(() => import('@/pages/Invoice'));
 const InvoiceCreate = lazy(() => import('@/pages/Invoice/InvoiceCreate'));
-const DoctorDashboard = lazy(() => import('@/pages/Dashboards/doctor'));
-const DistributorDashboard = lazy(() => import('@/pages/Dashboards/distributor'));
-const HospitalDashboard = lazy(() => import('@/pages/Dashboards/hospital'));
-const DelivererDashboard = lazy(() => import('@/pages/Dashboards/deliverer'));
 const InvoiceRead = lazy(() => import('@/pages/Invoice/InvoiceRead'));
 const InvoiceUpdate = lazy(() => import('@/pages/Invoice/InvoiceUpdate'));
 const InvoiceRecordPayment = lazy(() => import('@/pages/Invoice/InvoiceRecordPayment'));
@@ -26,7 +19,6 @@ const QuoteUpdate = lazy(() => import('@/pages/Quote/QuoteUpdate'));
 const Payment = lazy(() => import('@/pages/Payment/index'));
 const PaymentRead = lazy(() => import('@/pages/Payment/PaymentRead'));
 const PaymentUpdate = lazy(() => import('@/pages/Payment/PaymentUpdate'));
-
 const Settings = lazy(() => import('@/pages/Settings/Settings'));
 const PaymentMode = lazy(() => import('@/pages/PaymentMode'));
 const Taxes = lazy(() => import('@/pages/Taxes'));
@@ -34,123 +26,120 @@ const Returns = lazy(() => import('@/pages/returns'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Inventory = lazy(() => import('@/pages/inventoryTable'));
 const About = lazy(() => import('@/pages/About'));
+const PurchasePage = lazy(() => import('@/pages/purchase'));
+const SupplierPage = lazy(() => import('@/pages/supplier'));
 
-// ✅ Delivery pages
-const DeliveryDashboard = lazy(() => import('@/pages/delivery/Dashboard'));
+// Dashboards for roles
+const DoctorDashboard = lazy(() => import('@/pages/Dashboards/doctor'));
+const DistributorDashboard = lazy(() => import('@/pages/Dashboards/distributor'));
+const HospitalDashboard = lazy(() => import('@/pages/Dashboards/hospital'));
+const DelivererDashboard = lazy(() => import('@/pages/Dashboards/deliverer'));
+
+// Delivery pages (except DeliveryDashboard which is removed)
 const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
 const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
 
-let routes = {
-  expense: [],
-  default: [
-    { path: '/login', element: <Navigate to="/" /> },
-    { path: '/logout', element: <Logout /> },
-    { path: '/about', element: <About /> },
+export const routes = [
+  // Public or general routes
+  { path: '/logout', element: <Logout /> },
+  { path: '/about', element: <About /> },
+  { path: '/customer', element: <Customer /> },
+  { path: '/invoice', element: <Invoice /> },
+  { path: '/invoice/create', element: <InvoiceCreate /> },
+  { path: '/invoice/read/:id', element: <InvoiceRead /> },
+  { path: '/invoice/update/:id', element: <InvoiceUpdate /> },
+  { path: '/invoice/pay/:id', element: <InvoiceRecordPayment /> },
+  { path: '/quote', element: <Quote /> },
+  { path: '/quote/create', element: <QuoteCreate /> },
+  { path: '/quote/read/:id', element: <QuoteRead /> },
+  { path: '/quote/update/:id', element: <QuoteUpdate /> },
+  { path: '/payment', element: <Payment /> },
+  { path: '/payment/read/:id', element: <PaymentRead /> },
+  { path: '/payment/update/:id', element: <PaymentUpdate /> },
+  { path: '/settings', element: <Settings /> },
+  { path: '/settings/edit/:settingsKey', element: <Settings /> },
+  { path: '/payment/mode', element: <PaymentMode /> },
+  { path: '/taxes', element: <Taxes /> },
+  { path: '/profile', element: <Profile /> },
+  { path: '/inventory', element: <Inventory /> },
+  { path: '/returns', element: <Returns /> },
+  { path: '/purchase', element: <PurchasePage /> },
+  { path: '/supplier', element: <SupplierPage /> },
+  { path: '/register', element: <RegisterUser /> },
 
-    { path: '/customer', element: <Customer /> },
-    { path: '/invoice', element: <Invoice /> },
-    { path: '/invoice/create', element: <InvoiceCreate /> },
-    { path: '/invoice/read/:id', element: <InvoiceRead /> },
-    { path: '/invoice/update/:id', element: <InvoiceUpdate /> },
-    { path: '/invoice/pay/:id', element: <InvoiceRecordPayment /> },
-    { path: '/quote', element: <Quote /> },
-    { path: '/quote/create', element: <QuoteCreate /> },
-    { path: '/quote/read/:id', element: <QuoteRead /> },
-    { path: '/quote/update/:id', element: <QuoteUpdate /> },
-    { path: '/payment', element: <Payment /> },
-    { path: '/payment/read/:id', element: <PaymentRead /> },
-    { path: '/payment/update/:id', element: <PaymentUpdate /> },
-    { path: '/settings', element: <Settings /> },
-    { path: '/settings/edit/:settingsKey', element: <Settings /> },
-    { path: '/payment/mode', element: <PaymentMode /> },
-    { path: '/taxes', element: <Taxes /> },
-    { path: '/profile', element: <Profile /> },
-    { path: '*', element: <NotFound /> },
-    { path: '/inventory', element: <Inventory /> },
-    { path: '/returns', element: <Returns /> },
-    { path: '/purchase', element: <PurchasePage /> },
-    { path: '/supplier', element: <SupplierPage /> },
-    { path: '/register', element: <RegisterUser /> },
+  // Home/Dashboard (no protection)
+  { path: '/', element: <Dashboard /> },
 
-    // ✅ Role-based Dashboards
-    { path: '/', element: <Dashboard /> },
-    {
-      path: '/doctor',
-      element: (
-        <ProtectedRoute allowedRoles={['doctor']}>
-          <DoctorDashboard />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/distributor',
-      element: (
-        <ProtectedRoute allowedRoles={['distributor']}>
-          <DistributorDashboard />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/hospital',
-      element: (
-        <ProtectedRoute allowedRoles={['hospital']}>
-          <HospitalDashboard />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/deliverer',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <DelivererDashboard />
-        </ProtectedRoute>
-      ),
-    },
+  // Role-based protected dashboards
+  {
+    path: '/doctor',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/distributor',
+    element: (
+      <ProtectedRoute allowedRoles={['distributor']}>
+        <DistributorDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/deliverer',
+    element: (
+      <ProtectedRoute allowedRoles={['deliverer']}>
+        <DelivererDashboard />
+      </ProtectedRoute>
+    ),
+  },
 
-    // ✅ Delivery routes
-    {
-      path: '/delivery/dashboard',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <DeliveryDashboard />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/delivery/current-orders',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <CurrentOrders />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/delivery/pickup',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <PickupConfirmation />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/delivery/confirmation',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <DeliveryConfirmation />
-        </ProtectedRoute>
-      ),
-    },
-    {
-      path: '/delivery/history',
-      element: (
-        <ProtectedRoute allowedRoles={['deliverer']}>
-          <History />
-        </ProtectedRoute>
-      ),
-    },
-  ],
-};
+  // Delivery-related protected routes (without DeliveryDashboard)
+  {
+    path: '/delivery/current-orders',
+    element: (
+      <ProtectedRoute allowedRoles={['deliverer']}>
+        <CurrentOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/delivery/pickup',
+    element: (
+      <ProtectedRoute allowedRoles={['deliverer']}>
+        <PickupConfirmation />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/delivery/confirmation',
+    element: (
+      <ProtectedRoute allowedRoles={['deliverer']}>
+        <DeliveryConfirmation />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/delivery/history',
+    element: (
+      <ProtectedRoute allowedRoles={['deliverer']}>
+        <History />
+      </ProtectedRoute>
+    ),
+  },
 
-export default routes;
+  // Catch-all not found page
+  { path: '*', element: <NotFound /> },
+];

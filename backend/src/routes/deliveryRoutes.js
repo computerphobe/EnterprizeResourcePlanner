@@ -38,4 +38,26 @@ router.post('/:id/pickup', authenticateDeliverer, async (req, res) => {
   }
 });
 
+// GET /deliveries/stats
+router.get('/stats', authenticateDeliverer, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Aggregating count of deliveries grouped by status
+    const stats = await Delivery.aggregate([
+      { $match: { assignedTo: userId } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.status(200).json(stats);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch delivery stats' });
+  }
+});
+
 module.exports = router;

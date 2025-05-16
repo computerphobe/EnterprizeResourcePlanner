@@ -52,7 +52,7 @@ function Sidebar({ collapsible, isMobile = false }) {
 
   const { current: currentUser } = useSelector(selectAuth);
   const userRole = currentUser?.role || 'guest';
-  
+
   const translate = useLanguage();
   const navigate = useNavigate();
 
@@ -193,33 +193,28 @@ function Sidebar({ collapsible, isMobile = false }) {
         }
       ],
       deliverer: [
-  {
-    key: 'deliverer-dashboard',
-    icon: <DashboardOutlined />,
-    label: <Link to={'/deliverer'}>{translate('dashboard')}</Link>,
-  },
-  {
-    key: 'delivery-current',
-    icon: <ContainerOutlined />,
-    label: <Link to={'/delivery/current-orders'}>{translate('current_orders')}</Link>,
-  },
-  {
-    key: 'delivery-pickup',
-    icon: <FileSyncOutlined />,
-    label: <Link to={'/delivery/pickup'}>{translate('pickup_confirmation')}</Link>,
-  },
-  {
-    key: 'delivery-delivered',
-    icon: <ReconciliationOutlined />,
-    label: <Link to={'/delivery/delivered'}>{translate('delivery_confirmation')}</Link>,
-  },
-  {
-    key: 'delivery-history',
-    icon: <FileOutlined />,
-    label: <Link to={'/delivery/history'}>{translate('delivery_history')}</Link>,
-  }
-],
-
+        // Removed 'deliverer-dashboard' entry to avoid duplicate dashboard
+        {
+          key: 'delivery-current',
+          icon: <ContainerOutlined />,
+          label: <Link to={'/delivery/current-orders'}>{translate('current_orders')}</Link>,
+        },
+        {
+          key: 'delivery-pickup',
+          icon: <FileSyncOutlined />,
+          label: <Link to={'/delivery/pickup'}>{translate('pickup_confirmation')}</Link>,
+        },
+        {
+          key: 'delivery-confirmation',
+          icon: <ReconciliationOutlined />,
+          label: <Link to={'/delivery/confirmation'}>{translate('delivery_confirmation')}</Link>,
+        },
+        {
+          key: 'delivery-history',
+          icon: <FileOutlined />,
+          label: <Link to={'/delivery/history'}>{translate('delivery_history')}</Link>,
+        }
+      ],
       accountant: [
         {
           key: 'invoices',
@@ -246,10 +241,7 @@ function Sidebar({ collapsible, isMobile = false }) {
       default: []
     };
 
-    // Get role-specific menu items or use default if role not defined
     const roleItems = roleMenuItems[role] || roleMenuItems.default;
-    
-    // Combine common items with role-specific items
     return [...commonItems, ...roleItems];
   };
 
@@ -259,7 +251,22 @@ function Sidebar({ collapsible, isMobile = false }) {
   // Handle path change without causing infinite loops
   useEffect(() => {
     if (location) {
-      const newPath = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1);
+      let newPath = location.pathname.slice(1); // e.g. 'deliverer' or 'delivery/current-orders'
+
+      // Normalize root path
+      if (location.pathname === '/') {
+        newPath = 'dashboard';
+      }
+
+      // Normalize delivery-related paths
+      if (newPath.startsWith('delivery/current-orders')) newPath = 'delivery-current';
+      else if (newPath.startsWith('delivery/pickup')) newPath = 'delivery-pickup';
+      else if (newPath.startsWith('delivery/confirmation')) newPath = 'delivery-confirmation';
+      else if (newPath.startsWith('delivery/history')) newPath = 'delivery-history';
+
+      // Removed deliverer-dashboard mapping to avoid error since that dashboard was deleted
+      // if (newPath === 'deliverer') newPath = 'deliverer-dashboard';
+
       if (currentPath !== newPath) {
         setCurrentPath(newPath);
       }
@@ -268,17 +275,16 @@ function Sidebar({ collapsible, isMobile = false }) {
 
   // Handle logo animation without causing infinite loops
   useEffect(() => {
-    // Set immediately when closing navigation
     if (isNavMenuClose) {
       setLogoApp(true);
     } else {
-      // Add delay when opening navigation
       const timer = setTimeout(() => {
         setLogoApp(false);
       }, 200);
       return () => clearTimeout(timer);
     }
   }, [isNavMenuClose]);
+
   const onCollapse = () => {
     navMenu.collapse();
   };
@@ -293,14 +299,11 @@ function Sidebar({ collapsible, isMobile = false }) {
       style={{
         overflow: 'auto',
         height: '100vh',
-
         position: isMobile ? 'absolute' : 'relative',
         bottom: '20px',
         ...(!isMobile && {
-          // border: 'none',
-          ['left']: '20px',
+          left: '20px',
           top: '20px',
-          // borderRadius: '8px',
         }),
       }}
       theme={'light'}
@@ -308,9 +311,7 @@ function Sidebar({ collapsible, isMobile = false }) {
       <div
         className="logo"
         onClick={() => navigate('/')}
-        style={{
-          cursor: 'pointer',
-        }}
+        style={{ cursor: 'pointer' }}
       >
         <img src={logoIcon} alt="Logo" style={{ marginLeft: '-5px', height: '40px' }} />
 
@@ -318,11 +319,7 @@ function Sidebar({ collapsible, isMobile = false }) {
           <img
             src={logoText}
             alt="Logo"
-            style={{
-              marginTop: '3px',
-              marginLeft: '10px',
-              height: '38px',
-            }}
+            style={{ marginTop: '3px', marginLeft: '10px', height: '38px' }}
           />
         )}
       </div>
@@ -331,9 +328,7 @@ function Sidebar({ collapsible, isMobile = false }) {
         mode="inline"
         theme={'light'}
         selectedKeys={[currentPath]}
-        style={{
-          width: 256,
-        }}
+        style={{ width: 256 }}
       />
     </Sider>
   );
@@ -341,12 +336,8 @@ function Sidebar({ collapsible, isMobile = false }) {
 
 function MobileSidebar() {
   const [visible, setVisible] = useState(false);
-  const showDrawer = () => {
-    setVisible(true);
-  };
-  const onClose = () => {
-    setVisible(false);
-  };
+  const showDrawer = () => setVisible(true);
+  const onClose = () => setVisible(false);
 
   return (
     <>
@@ -355,13 +346,12 @@ function MobileSidebar() {
         size="large"
         onClick={showDrawer}
         className="mobile-sidebar-btn"
-        style={{ ['marginLeft']: 25 }}
+        style={{ marginLeft: 25 }}
       >
         <MenuOutlined style={{ fontSize: 18 }} />
       </Button>
       <Drawer
         width={250}
-        // style={{ backgroundColor: 'rgba(255, 255, 255, 1)' }}
         placement={'left'}
         closable={false}
         onClose={onClose}

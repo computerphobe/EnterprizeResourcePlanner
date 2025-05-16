@@ -25,7 +25,7 @@ export function contextReducer(state, action) {
     case actionTypes.CHANGE_APP:
       return {
         ...state,
-        currentApp: action.playload,
+        currentApp: action.payload,
       };
     case actionTypes.DEFAULT_APP:
       return {
