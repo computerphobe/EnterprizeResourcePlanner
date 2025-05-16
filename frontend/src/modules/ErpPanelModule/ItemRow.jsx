@@ -20,34 +20,32 @@ export default function ItemRow({ field, remove, current = null }) {
 
   useEffect(() => {
     if (current) {
-      // When it accesses the /payment/ endpoint,
-      // it receives an invoice.item instead of just item
-      // and breaks the code, but now we can check if items exists,
-      // and if it doesn't we can access invoice.items.
-
-      const { items, invoice } = current;
-
-      if (invoice) {
-        const item = invoice[field.fieldKey];
-
-        if (item) {
-          setQuantity(item.quantity);
-          setPrice(item.price);
-        }
+      // Improved handling of different data structures
+      let item = null;
+      
+      if (current.items && Array.isArray(current.items) && current.items[field.fieldKey]) {
+        // Direct items array
+        item = current.items[field.fieldKey];
+      } else if (current.invoice && current.invoice.items && Array.isArray(current.invoice.items)) {
+        // Nested invoice.items array
+        item = current.invoice.items[field.fieldKey];
+      } else if (current.items && typeof current.items === 'object' && !Array.isArray(current.items)) {
+        // Items as object with numeric keys
+        item = current.items[field.fieldKey];
+      }
+      
+      if (item) {
+        console.log('Found item:', item);
+        setQuantity(item.quantity || 0);
+        setPrice(item.price || 0);
       } else {
-        const item = items[field.fieldKey];
-
-        if (item) {
-          setQuantity(item.quantity);
-          setPrice(item.price);
-        }
+        console.log('Item not found for fieldKey:', field.fieldKey);
       }
     }
-  }, [current]);
+  }, [current, field.fieldKey]);
 
   useEffect(() => {
     const currentTotal = calculate.multiply(price, quantity);
-
     setTotal(currentTotal);
   }, [price, quantity]);
 

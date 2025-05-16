@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 
 import ProtectedRoute from '@/components/Protectedroutes'; // Make sure this path is correct
 
+const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 const Logout = lazy(() => import('@/pages/Logout.jsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
 const RegisterUser = lazy(() => import('@/pages/RegisterUsers.jsx'));
@@ -101,6 +102,10 @@ let routes = {
         </ProtectedRoute>
       ),
     },
+    {
+      path: '/expenses',
+      element: <ExpensesPage />
+    }
   ],
 };
 

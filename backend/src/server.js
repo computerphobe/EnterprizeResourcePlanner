@@ -1,4 +1,5 @@
 require('module-alias/register');
+console.log("got module-alias")
 const mongoose = require('mongoose');
 const { globSync } = require('glob');
 const path = require('path');
