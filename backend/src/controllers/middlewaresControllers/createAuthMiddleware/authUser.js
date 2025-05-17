@@ -52,6 +52,8 @@ console.log("reached authUser", isMatch, password, databasePassword.salt + passw
       },
       message: 'Successfully login user',
     });
+    console.log('jwt token', token);
+    console.log('user', user.role);
   } else {
     return res.status(403).json({
       success: false,

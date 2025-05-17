@@ -20,9 +20,10 @@ const roleMiddleware = (roles) => {
 
       // Attach decoded user data to the request object
       req.user = decoded;
-
+      console.log('Decoded user:', req.user);
       // Check if the user's role matches one of the allowed roles
       if (!roles.includes(req.user.role)) {
+
         return res.status(403).json({
           success: false,
           result: null,

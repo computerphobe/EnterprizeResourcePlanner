@@ -108,7 +108,7 @@ export const routes = [
 
   // Delivery-related protected routes (without DeliveryDashboard)
   {
-    path: '/delivery/current-orders',
+    path: '/current-orders',
     element: (
       <ProtectedRoute allowedRoles={['deliverer']}>
         <CurrentOrders />
@@ -116,7 +116,7 @@ export const routes = [
     ),
   },
   {
-    path: '/delivery/pickup',
+    path: '/pickup',
     element: (
       <ProtectedRoute allowedRoles={['deliverer']}>
         <PickupConfirmation />
@@ -124,7 +124,7 @@ export const routes = [
     ),
   },
   {
-    path: '/delivery/confirmation',
+    path: '/confirmation',
     element: (
       <ProtectedRoute allowedRoles={['deliverer']}>
         <DeliveryConfirmation />
@@ -132,7 +132,7 @@ export const routes = [
     ),
   },
   {
-    path: '/delivery/history',
+    path: '/history',
     element: (
       <ProtectedRoute allowedRoles={['deliverer']}>
         <History />

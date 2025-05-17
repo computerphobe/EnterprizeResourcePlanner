@@ -26,16 +26,18 @@ export default function AppRouter() {
     return 'default';
   }
 
-  useEffect(() => {
-    if (!app) return;
+useEffect(() => {
+  if (!app) return;
 
-    if (location.pathname === '/') {
-      app.default();
-    } else {
-      const appName = getAppNameByPath(location.pathname);
-      app.open(appName);
-    }
-  }, [location.pathname, app]);
+  if (location.pathname === '/') {
+    console.log('Default app opened');
+    app.default();
+  } else {
+    const appName = getAppNameByPath(location.pathname);
+    app.open(appName);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [location.pathname]);
 
   if (!app) return <div>Loading application context...</div>;
 

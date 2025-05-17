@@ -8,8 +8,6 @@ const INITIAL_STATE = {
 };
 
 const authReducer = (state = INITIAL_STATE, action) => {
-  console.log('authReducer action:', action);
-
   switch (action.type) {
     case actionTypes.REQUEST_LOADING:
       return {
@@ -20,7 +18,6 @@ const authReducer = (state = INITIAL_STATE, action) => {
       };
 
     case actionTypes.REQUEST_SUCCESS:
-      console.log("payload received by reducer:", action.payload);
       return {
         current: action.payload,
         isLoggedIn: true,

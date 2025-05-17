@@ -1,23 +1,43 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { selectAuth } from '@/redux/auth/selectors';
 
 const History = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const { current } = useSelector(selectAuth);
+  const token = current?.token || '';
+
   useEffect(() => {
-    fetch('/api/deliveries/history')
-      .then(res => res.json())
+    if (!token) {
+      console.warn('No auth token available');
+      setLoading(false);
+      return;
+    }
+
+    fetch('/api/deliveries/history', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
       .then(data => {
-        setHistory(data);
+        setHistory(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
         console.error('Failed to fetch delivery history', err);
         setLoading(false);
       });
-  }, []);
+  }, [token]);
 
   if (loading) return <p>Loading delivery history...</p>;
+
+  if (!Array.isArray(history)) return <p>Unexpected data format received.</p>;
 
   if (history.length === 0) return <p>No past deliveries found.</p>;
 
@@ -39,7 +59,7 @@ const History = () => {
               <td>{order._id}</td>
               <td>{order.client?.name || order.client}</td>
               <td>{order.status}</td>
-              <td>{new Date(order.deliveredAt).toLocaleString()}</td>
+              <td>{order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '-'}</td>
             </tr>
           ))}
         </tbody>

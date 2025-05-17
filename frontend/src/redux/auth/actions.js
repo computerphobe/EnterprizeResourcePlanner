@@ -38,7 +38,6 @@ export const login = ({ loginData, navigate }) => async (dispatch) => {
       const role = authPayload.role;
       console.log('Role-based navigation:', role);
       if (role && navigate) {
-        // Properly handle navigation through React Router
         switch (role) {
           case 'doctor':
             navigate('/doctor');
@@ -54,7 +53,7 @@ export const login = ({ loginData, navigate }) => async (dispatch) => {
             break;
           case 'owner':
           case 'admin':
-            navigate('/'); // Default admin dashboard
+            navigate('/');
             break;
           default:
             navigate('/');
@@ -69,6 +68,7 @@ export const login = ({ loginData, navigate }) => async (dispatch) => {
     dispatch({ type: actionTypes.REQUEST_FAILED });
   }
 };
+
 export const register =
   ({ registerData }) =>
   async (dispatch) => {
@@ -191,3 +191,15 @@ export const updateProfile =
       localStorage.setItem('auth', JSON.stringify(authState));
     }
   };
+
+// ✅ New: Restore auth from localStorage on app startup
+export const rehydrateAuth = () => (dispatch) => {
+  const authData = localStorage.getItem('auth');
+  if (authData) {
+    const parsed = JSON.parse(authData);
+    dispatch({
+      type: actionTypes.REQUEST_SUCCESS,
+      payload: parsed.current,
+    });
+  }
+};

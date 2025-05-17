@@ -197,22 +197,22 @@ function Sidebar({ collapsible, isMobile = false }) {
         {
           key: 'delivery-current',
           icon: <ContainerOutlined />,
-          label: <Link to={'/delivery/current-orders'}>{translate('current_orders')}</Link>,
+          label: <Link to={'/current-orders'}>{translate('current_orders')}</Link>,
         },
         {
           key: 'delivery-pickup',
           icon: <FileSyncOutlined />,
-          label: <Link to={'/delivery/pickup'}>{translate('pickup_confirmation')}</Link>,
+          label: <Link to={'/pickup'}>{translate('pickup_confirmation')}</Link>,
         },
         {
           key: 'delivery-confirmation',
           icon: <ReconciliationOutlined />,
-          label: <Link to={'/delivery/confirmation'}>{translate('delivery_confirmation')}</Link>,
+          label: <Link to={'/confirmation'}>{translate('delivery_confirmation')}</Link>,
         },
         {
           key: 'delivery-history',
           icon: <FileOutlined />,
-          label: <Link to={'/delivery/history'}>{translate('delivery_history')}</Link>,
+          label: <Link to={'/history'}>{translate('delivery_history')}</Link>,
         }
       ],
       accountant: [
