@@ -56,9 +56,7 @@ const DeliveryConfirmation = () => {
   };
 
   if (loading) return <p>Loading delivery confirmations...</p>;
-
   if (!Array.isArray(orders)) return <p>Unexpected data format received.</p>;
-
   if (orders.length === 0) return <p>No deliveries to confirm.</p>;
 
   return (

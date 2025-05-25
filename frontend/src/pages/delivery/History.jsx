@@ -36,9 +36,7 @@ const History = () => {
   }, [token]);
 
   if (loading) return <p>Loading delivery history...</p>;
-
   if (!Array.isArray(history)) return <p>Unexpected data format received.</p>;
-
   if (history.length === 0) return <p>No past deliveries found.</p>;
 
   return (

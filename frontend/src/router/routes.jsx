@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/components/Protectedroutes';
 
-// Lazy load your pages
 const Logout = lazy(() => import('@/pages/Logout.jsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
 const RegisterUser = lazy(() => import('@/pages/RegisterUsers.jsx'));
@@ -29,20 +28,17 @@ const About = lazy(() => import('@/pages/About'));
 const PurchasePage = lazy(() => import('@/pages/purchase'));
 const SupplierPage = lazy(() => import('@/pages/supplier'));
 
-// Dashboards for roles
 const DoctorDashboard = lazy(() => import('@/pages/Dashboards/doctor'));
 const DistributorDashboard = lazy(() => import('@/pages/Dashboards/distributor'));
 const HospitalDashboard = lazy(() => import('@/pages/Dashboards/hospital'));
 const DelivererDashboard = lazy(() => import('@/pages/Dashboards/deliverer'));
 
-// Delivery pages (except DeliveryDashboard which is removed)
 const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
 const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
 
 export const routes = [
-  // Public or general routes
   { path: '/logout', element: <Logout /> },
   { path: '/about', element: <About /> },
   { path: '/customer', element: <Customer /> },
@@ -69,10 +65,8 @@ export const routes = [
   { path: '/supplier', element: <SupplierPage /> },
   { path: '/register', element: <RegisterUser /> },
 
-  // Home/Dashboard (no protection)
   { path: '/', element: <Dashboard /> },
 
-  // Role-based protected dashboards
   {
     path: '/doctor',
     element: (
@@ -106,7 +100,6 @@ export const routes = [
     ),
   },
 
-  // Delivery-related protected routes (without DeliveryDashboard)
   {
     path: '/current-orders',
     element: (
@@ -140,6 +133,5 @@ export const routes = [
     ),
   },
 
-  // Catch-all not found page
   { path: '*', element: <NotFound /> },
 ];

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.509.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -38,6 +39,8 @@
     "openai": "^4.27.0",
     "pdfkit": "^0.16.0",
     "pug": "^3.0.2",
+    "proxy": "http://localhost:8888",
+
     "resend": "^2.0.0",
     "shortid": "^2.2.16",
     "transliteration": "^2.3.5"

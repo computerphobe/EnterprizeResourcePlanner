@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const deliverySchema = new mongoose.Schema(
   {
-    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true }, // Link to order
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Deliverer
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true, index: true },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Deliverer', required: true, index: true },
     status: {
       type: String,
       enum: ['pending', 'picked_up', 'delivered', 'cancelled'],
@@ -23,9 +23,13 @@ const deliverySchema = new mongoose.Schema(
     },
     history: [
       {
-        status: String,
+        status: {
+          type: String,
+          enum: ['pending', 'picked_up', 'delivered', 'cancelled'],
+          required: true,
+        },
         timestamp: { type: Date, default: Date.now },
-        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Deliverer' },
       },
     ],
   },

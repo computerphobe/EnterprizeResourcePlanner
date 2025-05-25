@@ -6,6 +6,7 @@ const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
 const deliveryController = require('@/controllers/deliveryController');
 const roleMiddleware = require('@/middleware/roleMiddleware'); // Role middleware for user roles
+const authenticateToken = require('@/middleware/authMiddleware'); // JWT Auth middleware
 
 const routerApp = (entity, controller) => {
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
@@ -37,27 +38,27 @@ const routerApp = (entity, controller) => {
   }
 };
 
-// General Delivery Routes (protected by roles)
+// General Delivery Routes (protected by auth + roles)
 router.route('/delivery/create')
-  .post(roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.createDelivery));
+  .post(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.createDelivery));
 router.route('/delivery/read/:id')
-  .get(roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getDeliveryById));
+  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getDeliveryById));
 router.route('/delivery/update/:id')
-  .patch(roleMiddleware(['deliverer']), catchErrors(deliveryController.updateDelivery));
+  .patch(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.updateDelivery));
 router.route('/delivery/delete/:id')
-  .delete(roleMiddleware(['admin']), catchErrors(deliveryController.deleteDelivery));
+  .delete(authenticateToken, roleMiddleware(['admin']), catchErrors(deliveryController.deleteDelivery));
 router.route('/delivery/list')
-  .get(roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getAllDeliveries));
+  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getAllDeliveries));
 
-// Deliverer Dashboard Routes
+// Deliverer Dashboard Routes (protected by auth + roles)
 router.route('/deliveries/current')
-  .get(roleMiddleware(['deliverer']), catchErrors(deliveryController.getCurrentDeliveries));
+  .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.getCurrentDeliveries));
 router.route('/deliveries/:id/pickup')
-  .post(roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup)); // changed method to confirmPickup
+  .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
 router.route('/deliveries/:id/confirm')
-  .post(roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));
+  .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));
 
-// Dynamic Entity Routes
+// Dynamic Entity Routes (no auth/role protection by default)
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);
