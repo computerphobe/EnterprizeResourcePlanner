@@ -11,6 +11,7 @@ const verifyDeliverer = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded JWT:', decoded);
 
     if (decoded.role !== 'deliverer') {
       return res.status(403).json({ message: 'Access denied: Not a deliverer' });

@@ -1,66 +1,98 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
-import { Table, Button, Typography, Alert } from 'antd';
+import { Table, Button, Typography, Alert, message } from 'antd';
 
 const { Title } = Typography;
 
 const PickupConfirmation = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState(null);
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
   useEffect(() => {
-    if (!token) return setLoading(false);
+    if (!token) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
 
     fetch('/api/deliveries/pickup', {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to fetch pickup orders');
+        }
+        return res.json();
+      })
       .then(data => {
+        console.log('Pickup orders fetched:', data);
         setOrders(Array.isArray(data) ? data : []);
-        setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to fetch pickup orders', err);
+        console.error('Failed to fetch pickup orders:', err);
+        message.error(err.message);
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [token]);
 
   const confirmPickup = (id) => {
+    setConfirmingId(id);
     fetch(`/api/deliveries/${id}/pickup`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => {
+      .then(async (res) => {
+        const data = await res.json();
+        setConfirmingId(null);
         if (res.ok) {
-          alert('Pickup confirmed!');
+          message.success('Pickup confirmed!');
           setOrders(prev => prev.filter(order => order._id !== id));
         } else {
-          alert('Failed to confirm pickup.');
+          message.error(data.error || 'Failed to confirm pickup.');
         }
       })
-      .catch(err => console.error('Error confirming pickup:', err));
+      .catch(err => {
+        setConfirmingId(null);
+        console.error('Error confirming pickup:', err);
+        message.error('Error confirming pickup.');
+      });
   };
 
   const columns = [
     {
       title: 'Order ID',
-      dataIndex: '_id',
-      key: 'id',
+      dataIndex: '_id',  // changed here from orderId to _id
+      key: '_id',
+      render: text => text || '-',
     },
     {
       title: 'Client',
       dataIndex: ['client', 'name'],
       key: 'client',
-      render: (_, record) => record.client?.name || record.client || '-',
+      render: (text, record) => record.client?.name || record.client || '-',
+    },
+    {
+      title: 'Address',
+      dataIndex: ['pickupDetails', 'address'],
+      key: 'address',
+      render: (text, record) => record.pickupDetails?.address || '-',
     },
     {
       title: 'Action',
       key: 'action',
       render: (_, record) => (
-        <Button type="primary" onClick={() => confirmPickup(record._id)}>
+        <Button
+          type="primary"
+          loading={confirmingId === record._id}
+          onClick={() => confirmPickup(record._id)}
+        >
           Confirm Pickup
         </Button>
       ),
