@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { Table, Button, Typography, Alert } from 'antd';
+
+const { Title } = Typography;
 
 const CurrentOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(null); // to track pickup/deliver button loading
+  const [actionLoading, setActionLoading] = useState(null);
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
@@ -13,7 +16,6 @@ const CurrentOrders = () => {
     const fetchCurrentOrders = async () => {
       try {
         if (!token) {
-          console.warn('No auth token available');
           setLoading(false);
           return;
         }
@@ -60,8 +62,8 @@ const CurrentOrders = () => {
         throw new Error(data.error || 'Pickup failed');
       }
 
-      setOrders((prev) =>
-        prev.map((order) =>
+      setOrders(prev =>
+        prev.map(order =>
           order._id === id ? { ...order, status: 'picked_up' } : order
         )
       );
@@ -90,8 +92,7 @@ const CurrentOrders = () => {
         throw new Error(data.error || 'Delivery failed');
       }
 
-      // Remove delivered order from list
-      setOrders((prev) => prev.filter((order) => order._id !== id));
+      setOrders(prev => prev.filter(order => order._id !== id));
     } catch (err) {
       console.error('Delivery error:', err);
       alert('Failed to mark order as delivered.');
@@ -100,65 +101,86 @@ const CurrentOrders = () => {
     }
   };
 
-  if (loading) return <p>Loading current orders...</p>;
-  if (!Array.isArray(orders)) return <p>Unexpected data format received.</p>;
-  if (orders.length === 0) return <p>No current delivery orders.</p>;
+  const columns = [
+    {
+      title: 'Order ID',
+      dataIndex: '_id',
+      key: 'id',
+    },
+    {
+      title: 'Client',
+      dataIndex: ['client', 'name'],
+      key: 'client',
+      render: (_, record) => record.client?.name || record.client || '-',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+    },
+    {
+      title: 'Pickup Address',
+      dataIndex: ['pickupDetails', 'address'],
+      key: 'pickupAddress',
+      render: (address) => address || '-',
+    },
+    {
+      title: 'Delivery Address',
+      dataIndex: ['deliveryDetails', 'address'],
+      key: 'deliveryAddress',
+      render: (address) => address || '-',
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <>
+          <Button
+            type="default"
+            onClick={() => alert(`View order ${record._id}`)}
+            disabled={actionLoading === record._id}
+            style={{ marginRight: 8 }}
+          >
+            View
+          </Button>
+          {record.status === 'assigned' && (
+            <Button
+              type="warning"
+              onClick={() => handlePickup(record._id)}
+              loading={actionLoading === record._id}
+            >
+              Mark as Picked Up
+            </Button>
+          )}
+          {record.status === 'picked_up' && (
+            <Button
+              type="primary"
+              onClick={() => handleDeliver(record._id)}
+              loading={actionLoading === record._id}
+            >
+              Mark as Delivered
+            </Button>
+          )}
+        </>
+      ),
+    },
+  ];
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Current Orders</h1>
-      <table className="w-full border-collapse border text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2">Order ID</th>
-            <th className="border p-2">Client</th>
-            <th className="border p-2">Status</th>
-            <th className="border p-2">Pickup Address</th>
-            <th className="border p-2">Delivery Address</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order._id} className="hover:bg-gray-50">
-              <td className="border p-2">{order._id}</td>
-              <td className="border p-2">{order.client?.name || order.client}</td>
-              <td className="border p-2">{order.status}</td>
-              <td className="border p-2">{order.pickupDetails?.address}</td>
-              <td className="border p-2">{order.deliveryDetails?.address}</td>
-              <td className="border p-2 space-x-2">
-                <button
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                  onClick={() => alert(`View order ${order._id}`)}
-                  disabled={actionLoading === order._id}
-                >
-                  View
-                </button>
-
-                {order.status === 'assigned' && (
-                  <button
-                    className="bg-yellow-500 text-white px-2 py-1 rounded"
-                    onClick={() => handlePickup(order._id)}
-                    disabled={actionLoading === order._id}
-                  >
-                    Mark as Picked Up
-                  </button>
-                )}
-
-                {order.status === 'picked_up' && (
-                  <button
-                    className="bg-green-600 text-white px-2 py-1 rounded"
-                    onClick={() => handleDeliver(order._id)}
-                    disabled={actionLoading === order._id}
-                  >
-                    Mark as Delivered
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <Title level={2}>Current Orders</Title>
+      {loading ? (
+        <Alert message="Loading current orders..." type="info" />
+      ) : !Array.isArray(orders) || orders.length === 0 ? (
+        <Alert message="Nothing to display" type="warning" />
+      ) : (
+        <Table
+          dataSource={orders}
+          columns={columns}
+          rowKey={record => record._id}
+          pagination={{ pageSize: 5 }}
+        />
+      )}
     </div>
   );
 };

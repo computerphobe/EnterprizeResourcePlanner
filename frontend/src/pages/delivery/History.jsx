@@ -1,30 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { Table, Typography, Alert } from 'antd';
+
+const { Title } = Typography;
 
 const History = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
   useEffect(() => {
-    if (!token) {
-      console.warn('No auth token available');
-      setLoading(false);
-      return;
-    }
+    if (!token) return setLoading(false);
 
     fetch('/api/deliveries/history', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         setHistory(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -35,33 +28,47 @@ const History = () => {
       });
   }, [token]);
 
-  if (loading) return <p>Loading delivery history...</p>;
-  if (!Array.isArray(history)) return <p>Unexpected data format received.</p>;
-  if (history.length === 0) return <p>No past deliveries found.</p>;
+  const columns = [
+    {
+      title: 'Order ID',
+      dataIndex: '_id',
+      key: 'id',
+    },
+    {
+      title: 'Client',
+      dataIndex: ['client', 'name'],
+      key: 'client',
+      render: (_, record) => record.client?.name || record.client || '-',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+    },
+    {
+      title: 'Delivered At',
+      dataIndex: ['deliveryDetails', 'deliveryTime'],
+      key: 'deliveredAt',
+      render: (time) =>
+        time ? new Date(time).toLocaleString() : '-',
+    },
+  ];
 
   return (
     <div>
-      <h1>Delivery History</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Client</th>
-            <th>Status</th>
-            <th>Delivered At</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.map(order => (
-            <tr key={order._id}>
-              <td>{order._id}</td>
-              <td>{order.client?.name || order.client}</td>
-              <td>{order.status}</td>
-              <td>{order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Title level={2}>Delivery History</Title>
+      {loading ? (
+        <Alert message="Loading delivery history..." type="info" />
+      ) : history.length === 0 ? (
+        <Alert message="Nothing to display" type="warning" />
+      ) : (
+        <Table
+          dataSource={history}
+          columns={columns}
+          rowKey={record => record._id}
+          pagination={{ pageSize: 5 }}
+        />
+      )}
     </div>
   );
 };

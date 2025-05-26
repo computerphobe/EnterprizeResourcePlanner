@@ -1,30 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { Table, Button, Typography, Alert } from 'antd';
+
+const { Title } = Typography;
 
 const DeliveryConfirmation = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
   useEffect(() => {
-    if (!token) {
-      console.warn('No auth token available');
-      setLoading(false);
-      return;
-    }
+    if (!token) return setLoading(false);
 
     fetch('/api/deliveries/pending-delivery', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         setOrders(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -38,38 +31,57 @@ const DeliveryConfirmation = () => {
   const confirmDelivery = (id) => {
     fetch(`/api/deliveries/${id}/deliver`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => {
         if (res.ok) {
           alert('Delivery confirmed!');
-          setOrders(orders.filter(order => order._id !== id));
+          setOrders(prev => prev.filter(order => order._id !== id));
         } else {
           alert('Failed to confirm delivery.');
         }
       })
-      .catch(err => {
-        console.error('Error confirming delivery:', err);
-      });
+      .catch(err => console.error('Error confirming delivery:', err));
   };
 
-  if (loading) return <p>Loading delivery confirmations...</p>;
-  if (!Array.isArray(orders)) return <p>Unexpected data format received.</p>;
-  if (orders.length === 0) return <p>No deliveries to confirm.</p>;
+  const columns = [
+    {
+      title: 'Order ID',
+      dataIndex: '_id',
+      key: 'id',
+    },
+    {
+      title: 'Client',
+      dataIndex: ['client', 'name'],
+      key: 'client',
+      render: (_, record) => record.client?.name || record.client || '-',
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Button type="primary" onClick={() => confirmDelivery(record._id)}>
+          Confirm Delivery
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <h1>Delivery Confirmation</h1>
-      <ul>
-        {orders.map(order => (
-          <li key={order._id}>
-            Order: {order._id} - Client: {order.client?.name || order.client}
-            <button onClick={() => confirmDelivery(order._id)}>Confirm Delivery</button>
-          </li>
-        ))}
-      </ul>
+      <Title level={2}>Delivery Confirmation</Title>
+      {loading ? (
+        <Alert message="Loading delivery confirmations..." type="info" />
+      ) : orders.length === 0 ? (
+        <Alert message="Nothing to display" type="warning" />
+      ) : (
+        <Table
+          dataSource={orders}
+          columns={columns}
+          rowKey={record => record._id}
+          pagination={false}
+        />
+      )}
     </div>
   );
 };

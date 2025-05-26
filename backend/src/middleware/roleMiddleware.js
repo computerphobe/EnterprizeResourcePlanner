@@ -4,7 +4,6 @@ const roleMiddleware = (roles) => {
   return (req, res, next) => {
     // Extract token from Authorization header
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
     // Check if token is missing
     if (!token) {
       return res.status(401).json({
@@ -17,13 +16,12 @@ const roleMiddleware = (roles) => {
     try {
       // Verify and decode the JWT token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
       // Attach decoded user data to the request object
       req.user = decoded;
       console.log('Decoded user:', req.user);
+      console.log('role of the user is : ', req.user.role)
       // Check if the user's role matches one of the allowed roles
       if (!roles.includes(req.user.role)) {
-
         return res.status(403).json({
           success: false,
           result: null,

@@ -11,14 +11,19 @@ const verifyDeliverer = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.deliverer = decoded;
 
-    if (!req.deliverer._id) {
-      return res.status(403).json({ message: 'Invalid token payload: _id missing' });
+    if (decoded.role !== 'deliverer') {
+      return res.status(403).json({ message: 'Access denied: Not a deliverer' });
     }
+
+    req.deliverer = {
+      _id: decoded.id,
+      email: decoded.email,
+    };
 
     next();
   } catch (err) {
+    console.error('Token verification failed:', err);
     return res.status(401).json({ message: 'Token is invalid or expired' });
   }
 };

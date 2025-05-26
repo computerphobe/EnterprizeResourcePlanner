@@ -11,10 +11,6 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   // Extract role from current user
   const roleRaw = current?.role || '';
   const role = roleRaw.trim().toLowerCase();
-
-  console.log('ProtectedRoute - User role raw:', roleRaw);
-  console.log('ProtectedRoute - User role normalized:', role);
-
   // If no role found, user is not authenticated, redirect to login
   if (!role) {
     return <Navigate to="/login" replace />;
