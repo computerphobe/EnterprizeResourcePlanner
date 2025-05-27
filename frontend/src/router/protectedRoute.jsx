@@ -1,29 +1,30 @@
-import { Navigate, useLocation } from 'react-router-dom';
+// src/components/ProtectedRoute.jsx
+import React from 'react';
 import { useSelector } from 'react-redux';
+import { Navigate } from 'react-router-dom';
 import { selectAuth } from '@/redux/auth/selectors';
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { current: user, isLoggedIn } = useSelector(selectAuth);
-  const location = useLocation();
+const ProtectedRoute = ({ allowedRoles, children }) => {
+  // Grab the 'current' user object from the auth slice
+  const { current } = useSelector(selectAuth);
 
-  // Redirect to login if not logged in
-  if (!isLoggedIn || !user) {
-    return (
-      <Navigate 
-        to="/login" // ✅ <-- make sure this matches your login route
-        state={{ from: location }}
-        replace 
-      />
-    );
+  // Extract role from current user
+  const roleRaw = current?.role || '';
+  const role = roleRaw.trim().toLowerCase();
+  // If no role found, user is not authenticated, redirect to login
+  if (!role) {
+    return <Navigate to="/login" replace />;
   }
 
-  // Allow access if role is valid or no restriction
-  if (allowedRoles.length === 0 || allowedRoles.includes(user.role)) {
-    return children;
+  // Check if the role is allowed for this route
+  const allowed = allowedRoles.map(r => r.toLowerCase());
+  if (!allowed.includes(role)) {
+    // Role not authorized, redirect to home or some other page
+    return <Navigate to="/" replace />;
   }
 
-  // Role not allowed
-  return <Navigate to="/" replace />;
+  // Authorized: render the children components
+  return children;
 };
 
 export default ProtectedRoute;

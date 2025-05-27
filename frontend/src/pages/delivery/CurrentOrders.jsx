@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
-import { Table, Button, Typography, Alert } from 'antd';
+import { Table, Button, Typography, Alert, message } from 'antd';
 
 const { Title } = Typography;
 
@@ -13,63 +13,68 @@ const CurrentOrders = () => {
   const token = current?.token || '';
 
   useEffect(() => {
-    const fetchCurrentOrders = async () => {
-      try {
-        if (!token) {
-          setLoading(false);
-          return;
-        }
+    if (!token) {
+      setLoading(false);
+      setOrders([]);
+      return;
+    }
 
+    const fetchOrders = async () => {
+      try {
         const response = await fetch('/api/deliveries/current', {
-          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
           },
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch current orders');
         }
 
-        setOrders(data);
+        const data = await response.json();
+        console.log('Fetched current orders:', data);
+
+        if (Array.isArray(data)) {
+          setOrders(data);
+        } else {
+          setOrders([]);
+        }
       } catch (err) {
         console.error('Failed to fetch current orders:', err);
+        message.error(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCurrentOrders();
+    fetchOrders();
   }, [token]);
 
   const handlePickup = async (id) => {
     setActionLoading(id);
     try {
-      const res = await fetch(`/api/deliveries/${id}/pickup`, {
+      const response = await fetch(`/api/deliveries/${id}/pickup`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Pickup failed');
+      const data = await response.json();
+      if (response.ok) {
+        message.success('Marked as picked up!');
+        setOrders((prev) =>
+          prev.map((order) =>
+            order._id === id ? { ...order, status: 'picked_up' } : order
+          )
+        );
+      } else {
+        message.error(data.error || 'Failed to confirm pickup.');
       }
-
-      setOrders(prev =>
-        prev.map(order =>
-          order._id === id ? { ...order, status: 'picked_up' } : order
-        )
-      );
     } catch (err) {
       console.error('Pickup error:', err);
-      alert('Failed to mark order as picked up.');
+      message.error('Error marking as picked up');
     } finally {
       setActionLoading(null);
     }
@@ -78,24 +83,23 @@ const CurrentOrders = () => {
   const handleDeliver = async (id) => {
     setActionLoading(id);
     try {
-      const res = await fetch(`/api/deliveries/${id}/deliver`, {
+      const response = await fetch(`/api/deliveries/${id}/deliver`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Delivery failed');
+      const data = await response.json();
+      if (response.ok) {
+        message.success('Marked as delivered!');
+        setOrders((prev) => prev.filter((order) => order._id !== id));
+      } else {
+        message.error(data.error || 'Failed to confirm delivery.');
       }
-
-      setOrders(prev => prev.filter(order => order._id !== id));
     } catch (err) {
       console.error('Delivery error:', err);
-      alert('Failed to mark order as delivered.');
+      message.error('Error marking as delivered');
     } finally {
       setActionLoading(null);
     }
@@ -105,11 +109,10 @@ const CurrentOrders = () => {
     {
       title: 'Order ID',
       dataIndex: '_id',
-      key: 'id',
+      key: '_id',
     },
     {
       title: 'Client',
-      dataIndex: ['client', 'name'],
       key: 'client',
       render: (_, record) => record.client?.name || record.client || '-',
     },
@@ -117,42 +120,34 @@ const CurrentOrders = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      render: (text) => text.charAt(0).toUpperCase() + text.slice(1), // Capitalize
     },
     {
       title: 'Pickup Address',
-      dataIndex: ['pickupDetails', 'address'],
-      key: 'pickupAddress',
-      render: (address) => address || '-',
+      key: 'pickup',
+      render: (_, record) => record.pickupDetails?.address || '-',
     },
     {
       title: 'Delivery Address',
-      dataIndex: ['deliveryDetails', 'address'],
-      key: 'deliveryAddress',
-      render: (address) => address || '-',
+      key: 'delivery',
+      render: (_, record) => record.deliveryDetails?.address || '-',
     },
     {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <>
-          <Button
-            type="default"
-            onClick={() => alert(`View order ${record._id}`)}
-            disabled={actionLoading === record._id}
-            style={{ marginRight: 8 }}
-          >
-            View
-          </Button>
-          {record.status === 'assigned' && (
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => {
+        if (record.status === 'pending') {
+          return (
             <Button
-              type="warning"
+              type="default"
               onClick={() => handlePickup(record._id)}
               loading={actionLoading === record._id}
             >
               Mark as Picked Up
             </Button>
-          )}
-          {record.status === 'picked_up' && (
+          );
+        } else if (record.status === 'picked_up') {
+          return (
             <Button
               type="primary"
               onClick={() => handleDeliver(record._id)}
@@ -160,9 +155,11 @@ const CurrentOrders = () => {
             >
               Mark as Delivered
             </Button>
-          )}
-        </>
-      ),
+          );
+        } else {
+          return '-';
+        }
+      },
     },
   ];
 
@@ -171,13 +168,13 @@ const CurrentOrders = () => {
       <Title level={2}>Current Orders</Title>
       {loading ? (
         <Alert message="Loading current orders..." type="info" />
-      ) : !Array.isArray(orders) || orders.length === 0 ? (
-        <Alert message="Nothing to display" type="warning" />
+      ) : orders.length === 0 ? (
+        <Alert message="No current orders to display" type="warning" />
       ) : (
         <Table
           dataSource={orders}
           columns={columns}
-          rowKey={record => record._id}
+          rowKey={(record) => record._id}
           pagination={{ pageSize: 5 }}
         />
       )}
