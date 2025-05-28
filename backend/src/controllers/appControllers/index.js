@@ -35,6 +35,5 @@ const appControllers = () => {
 
   return controllers;
 };
-console.log('Loaded app controllers:', Object.keys(appControllers()));
 
 module.exports = appControllers();
