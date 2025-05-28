@@ -17,10 +17,15 @@ const verifyDeliverer = (req, res, next) => {
       return res.status(403).json({ message: 'Access denied: Not a deliverer' });
     }
 
+    if (!decoded.id) {
+      return res.status(400).json({ message: 'Invalid token payload: missing ID' });
+    }
+
     req.deliverer = {
       _id: decoded.id,
-      email: decoded.email,
+      email: decoded.email || '',
     };
+    console.log('Deliverer attached to request:', req.deliverer);
 
     next();
   } catch (err) {
