@@ -6,6 +6,7 @@ const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
 const RegisterUser = lazy(() => import('@/pages/RegisterUsers.jsx'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Customer = lazy(() => import('@/pages/Customer'));
+const OrderList = lazy(() => import('@/pages/OrderArray'));
 const Invoice = lazy(() => import('@/pages/Invoice'));
 const InvoiceCreate = lazy(() => import('@/pages/Invoice/InvoiceCreate'));
 const InvoiceRead = lazy(() => import('@/pages/Invoice/InvoiceRead'));
@@ -64,6 +65,7 @@ export const routes = [
   { path: '/purchase', element: <PurchasePage /> },
   { path: '/supplier', element: <SupplierPage /> },
   { path: '/register', element: <RegisterUser /> },
+  {path : '/order', element: <OrderList />},
 
   { path: '/', element: <Dashboard /> },
 

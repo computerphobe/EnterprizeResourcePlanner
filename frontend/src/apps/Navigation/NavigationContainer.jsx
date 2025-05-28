@@ -31,6 +31,7 @@ import {
   SwapOutlined,
   ShoppingCartOutlined,
   LinuxOutlined,
+  OrderedListOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -139,7 +140,12 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'purchase',
           label: <Link to={'/purchase'}>{translate('purchases')}</Link>,
           icon: <ShoppingCartOutlined />
-        }
+        },
+        {
+          key: 'Orders',
+          label: <Link to={'/order'}>{translate('order')}</Link>,
+          icon: <OrderedListOutlined />
+        },
       ],
       doctor: [
         {

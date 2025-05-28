@@ -37,6 +37,12 @@ const routesList = [
     controllerName: 'purchaseController',
     modelName: 'Purchase',
   },
+  {
+    entity: 'orders',
+    controllerName: 'orderController',
+    modelName: 'Order'
+  },
+  { entity: 'admin', controllerName: 'adminController', modelName: 'Admin' }
 ];
 
 for (const filePath of appModelsFiles) {
@@ -59,7 +65,6 @@ for (const filePath of appModelsFiles) {
     constrollersList.push(controllerName);
     appModelsList.push(modelName);
     entityList.push(entity);
-    console.log(`Model added: ${modelName} - ${controllerName}`);
     const route = {
       entity: entity,
       modelName: modelName,
@@ -69,5 +74,5 @@ for (const filePath of appModelsFiles) {
   }
 }
 
-console.log('Routes List:', routesList);
+// console.log('Routes List:', routesList);
 module.exports = { constrollersList, appModelsList, modelsFiles, entityList, routesList };

@@ -1,6 +1,5 @@
 const { modelsFiles } = require('@/models/utils');
 const mongoose = require('mongoose');
-console.log('Models files:', modelsFiles);
 const create = require('./create');
 const read = require('./read');
 const update = require('./update');
@@ -30,6 +29,5 @@ const createCRUDController = (modelName) => {
   };
   return crudMethods;
 };
-console.log('CRUD controller created:', createCRUDController('Returns'));
 
 module.exports = createCRUDController;
