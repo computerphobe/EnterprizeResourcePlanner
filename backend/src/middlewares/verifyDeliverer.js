@@ -18,10 +18,15 @@ const verifyDeliverer = (req, res, next) => {
       return res.status(403).json({ message: 'Access denied: Not a deliverer' });
     }
 
+    if (!decoded.id) {
+      return res.status(400).json({ message: 'Invalid token payload: missing ID' });
+    }
+
     req.deliverer = {
-      _id: new mongoose.Types.ObjectId(decoded.id), // ✅ Cast to ObjectId
-      email: decoded.email,
+      _id: decoded.id,
+      email: decoded.email || '',
     };
+    console.log('Deliverer attached to request:', req.deliverer);
 
     next();
   } catch (err) {
