@@ -25,7 +25,7 @@ exports.getCurrentDeliveries = async (req, res) => {
   }
 };
 
-// Confirm pickup of a delivery
+// Confirm pickup of a delivery (updated to handle returnItems)
 exports.confirmPickup = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -34,6 +34,7 @@ exports.confirmPickup = async (req, res) => {
 
     const delivererId = req.user.id;
     const deliveryId = req.params.id;
+    const { returnItems } = req.body;
 
     if (!isValidObjectId(deliveryId)) {
       return res.status(400).json({ message: 'Invalid delivery ID' });
@@ -49,8 +50,14 @@ exports.confirmPickup = async (req, res) => {
       return res.status(404).json({ message: 'Delivery not found or already picked up' });
     }
 
+    // Update delivery status and pickup time
     delivery.status = 'picked_up';
     delivery.pickup_time = new Date();
+
+    // Save returnItems if provided and valid
+    if (returnItems && Array.isArray(returnItems)) {
+      delivery.returnItems = returnItems;
+    }
 
     await delivery.save();
 

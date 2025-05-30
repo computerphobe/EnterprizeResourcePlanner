@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose'); 
 
 const verifyDeliverer = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -18,7 +19,7 @@ const verifyDeliverer = (req, res, next) => {
     }
 
     req.deliverer = {
-      _id: decoded.id,
+      _id: new mongoose.Types.ObjectId(decoded.id), // ✅ Cast to ObjectId
       email: decoded.email,
     };
 
