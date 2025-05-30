@@ -53,22 +53,26 @@ const PickupConfirmation = () => {
     setSelectedOrder(order);
     const initializedItems = order.items?.map(item => ({
       ...item,
-      returnQuantity: item.returnQuantity != null ? item.returnQuantity : 0,
+      returnAmount: item.returnAmount != null ? item.returnAmount : 0,
     })) || [];
+    const returnItems = editableItems.map(item => ({
+    itemId: item._id,
+    returnAmount: item.returnAmount || 0,
+    }));
     setEditableItems(initializedItems);
     setModalVisible(true);
   };
 
-  // Update local returnQuantity state on input change
-  const handleReturnQuantityChange = (value, index) => {
+  // Update local returnAmount state on input change
+  const handleReturnAmountChange = (value, index) => {
     const val = Number(value);
     if (val < 0) {
-      message.error('Return quantity cannot be negative');
+      message.error('Return amount cannot be negative');
       return;
     }
 
     const updatedItems = [...editableItems];
-    updatedItems[index].returnQuantity = isNaN(val) ? 0 : val;
+    updatedItems[index].returnAmount = isNaN(val) ? 0 : val;
     setEditableItems(updatedItems);
   };
 
@@ -86,10 +90,10 @@ const PickupConfirmation = () => {
   // Validate form: all returnQuantity are numbers >= 0
   const isFormValid = () => {
     return editableItems.every(item =>
-      item.returnQuantity !== undefined &&
-      item.returnQuantity !== null &&
-      !isNaN(item.returnQuantity) &&
-      item.returnQuantity >= 0
+      item.returnAmount !== undefined &&
+      item.returnAmount !== null &&
+      !isNaN(item.returnAmount) &&
+      item.returnAmount >= 0
     );
   };
 
@@ -230,15 +234,15 @@ const PickupConfirmation = () => {
                     render: price => price != null ? `₹${price.toFixed(2)}` : '-',
                   },
                   {
-                    title: 'Return Quantity',
-                    key: 'returnQuantity',
+                    title: 'Return Amount',
+                    key: 'returnAmount',
                     render: (_, record, index) => (
                       <Input
                         type="number"
                         min={0}
-                        value={record.returnQuantity}
-                        onChange={e => handleReturnQuantityChange(e.target.value, index)}
-                        placeholder="Enter return quantity"
+                        value={record.returnAmount}
+                        onChange={e => handleReturnAmountChange(e.target.value, index)}
+                        placeholder="Enter return amount"
                       />
                     ),
                   },
