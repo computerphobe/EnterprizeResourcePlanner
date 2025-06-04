@@ -1,4 +1,12 @@
+const { quantity } = require('@/locale/translation/en_us');
 const mongoose = require('mongoose');
+
+const itemSchema = new mongoose.Schema({
+  name: String,
+  quantity: Number,
+  price: Number,
+  returnAmount: {type: Number, default: 0 },
+});
 
 const deliverySchema = new mongoose.Schema(
   {
@@ -30,6 +38,10 @@ const deliverySchema = new mongoose.Schema(
       contact: { type: String, required: false },
       deliveryConfirmed: { type: Boolean, default: false },
       deliveryTime: { type: Date },
+    },
+    items: [itemSchema],
+    client: {
+      name: { type: String, required: true },
     },
     deliveryPhoto: { type: String }, // path to delivery photo
     history: [
