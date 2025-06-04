@@ -67,6 +67,13 @@ router.route('/order/:orderId/assignDelivery')
 
 router.patch('/:id/assignDelivery', authenticateToken, roleMiddleware(['owner']), orderController.assignDeliverer); // optional legacy
 
+// 🏥 Hospital Order Routes
+router.route('/hospital/orders')
+  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.hospitalOrders));
+
+router.route('/hospital/orders/create')
+  .post(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.createHospitalOrder));
+
 // 🧠 Register all dynamic entity-based routes
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];

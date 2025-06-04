@@ -72,10 +72,86 @@ const assignDeliverer = async (req, res) => {
   }
 };
 
+const hospitalOrders = async (req, res) => {
+  console.log('getOrdersForHospital endpoint hit');
+  try {
+    const hospitalId = req.user.id;
+    console.log('Fetching orders for hospital:', hospitalId);
 
+    const orders = await Order.find({ 
+      doctorId: hospitalId,
+      isDeleted: false 
+    })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'delivererId',
+        match: { _id: { $ne: null } },
+        select: 'name role email'
+      });
 
-  module.exports = {
-    assignDeliverer,
-    delivererOrders,
-    ownerOrders
-  };
+    console.log('Hospital orders:', orders.length);
+    res.json({ success: true, result: orders });
+  } catch (error) {
+    console.error('Error fetching hospital orders:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+const createHospitalOrder = async (req, res) => {
+  console.log('createHospitalOrder endpoint hit');
+  try {
+    const { items, totalAmount } = req.body;
+    const hospitalId = req.user.id;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order must contain at least one item' 
+      });
+    }
+
+    // Validate inventoryItem IDs and purchase types
+    for (const item of items) {
+      if (!mongoose.Types.ObjectId.isValid(item.inventoryItem)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid inventory item ID' 
+        });
+      }
+      
+      if (!item.purchaseType || !['buy', 'rent'].includes(item.purchaseType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid purchase type. Must be either "buy" or "rent"'
+        });
+      }
+    }
+
+    // Create the order
+    const order = new Order({
+      items,
+      totalAmount: totalAmount || 0,
+      status: 'pending',
+      orderType: 'doctor',
+      doctorId: hospitalId,
+      doctorName: req.user.name,
+      hospitalName: req.user.hospitalName,
+      createdBy: hospitalId
+    });
+
+    await order.save();
+    console.log('Hospital order created:', order);
+    res.json({ success: true, result: order });
+  } catch (error) {
+    console.error('Error creating hospital order:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+};
+
+module.exports = {
+  assignDeliverer,
+  delivererOrders,
+  ownerOrders,
+  hospitalOrders,
+  createHospitalOrder
+};

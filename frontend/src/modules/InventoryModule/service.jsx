@@ -23,7 +23,8 @@ export const getinventory = async (params = {}) => {
     if (response.success && Array.isArray(response.result)) {
       return response.result.map(item => ({
         ...item,
-        key: item._id // Ensure each item has a unique key
+        key: item._id,
+        status: item.quantity > 0 ? 'In Stock' : 'Out of Stock'
       }));
     }
     return [];
