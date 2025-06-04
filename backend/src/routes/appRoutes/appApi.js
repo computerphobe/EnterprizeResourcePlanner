@@ -4,7 +4,7 @@ const router = express.Router();
 
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
-const deliveryController = require('@/controllers/deliveryController');
+const deliveryController = require('@/controllers/appControllers/deliveryController');
 const roleMiddleware = require('@/middleware/roleMiddleware');
 const authenticateToken = require('@/middleware/authMiddleware');
 const orderController = require('@/controllers/appControllers/orderController');
@@ -38,22 +38,21 @@ const routerApp = (entity, controller) => {
   }
 };
 
-// 🛡️ Delivery Routes
-router.route('/delivery/create')
-  .post(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.createDelivery));
-router.route('/delivery/read/:id')
-  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getDeliveryById));
-router.route('/delivery/update/:id')
-  .patch(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.updateDelivery));
-router.route('/delivery/delete/:id')
-  .delete(authenticateToken, roleMiddleware(['admin']), catchErrors(deliveryController.deleteDelivery));
-router.route('/delivery/list')
-  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getAllDeliveries));
+// accountant routes 
+router.route('/order/pending-invoice').get(
+  authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), 
+  catchErrors(orderController.getPendingInvoices)
+)
+
+router.route('/order/:orderId/details')
+  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(orderController.getOrderWithInventoryDetails));
+
+
 
 // 🚚 Deliverer Dashboard Routes
 router.route('/order/current')
   .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(orderController.delivererOrders));
-router.route('/deliveries/:id/pickup')
+router.route('/deliveries/pending-delivery')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
 router.route('/deliveries/:id/confirm')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));

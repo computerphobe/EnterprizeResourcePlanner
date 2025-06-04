@@ -1,5 +1,6 @@
 const Order = require('@/models/appModels/Order');
 const Admin = require('@/models/coreModels/Admin');
+const Inventory = require('@/models/appModels/Inventory')
 const mongoose = require('mongoose')
 console.log("order controller loaded")
 const delivererOrders = async ( req, res ) => {
@@ -72,10 +73,74 @@ const assignDeliverer = async (req, res) => {
   }
 };
 
+const getPendingInvoices = async (req, res) => {
+  try {
+    const orders = await Order.find({
+      isDeleted: false,
+      invoiceId: { $exists: false }, // or: invoiceId: null
+    })
+      .populate('doctorId', 'name')
+      .populate('delivererId', 'name')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      result: orders,
+    });
+  } catch (err) {
+    console.error('❌ Error fetching pending invoicing orders:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch pending invoicing orders',
+    });
+  }
+};
+
+
+const getOrderWithInventoryDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find the order and populate inventoryItem references
+    const order = await Order.findById(orderId).populate('items.inventoryItem');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Map through order items and replace price with latest from Inventory
+    const updatedItems = await Promise.all(order.items.map(async (item) => {
+      // Fetch current inventory price for the item
+      const inventoryItem = await Inventory.findById(item.inventoryItem._id);
+
+      return {
+        _id: item._id,
+        inventoryItem: item.inventoryItem,
+        quantity: item.quantity,
+        price: inventoryItem ? inventoryItem.price : item.price, // fallback to existing price if inventory missing
+      };
+    }));
+
+    // Return order with updated items (with fresh prices)
+    return res.json({
+      success: true,
+      order: {
+        ...order.toObject(),
+        items: updatedItems,
+      },
+    });
+
+  } catch (error) {
+    console.error('Error fetching order with inventory details:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
 
 
   module.exports = {
     assignDeliverer,
     delivererOrders,
-    ownerOrders
+    ownerOrders,
+    getPendingInvoices,
+    getOrderWithInventoryDetails,
   };

@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/components/Protectedroutes';
+import PendingOrders from '@/pages/pendingOrders';
 
 const Logout = lazy(() => import('@/pages/Logout.jsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
@@ -132,6 +133,13 @@ export const routes = [
       <ProtectedRoute allowedRoles={['deliverer']}>
         <History />
       </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/pending',
+    element:( <ProtectedRoute allowedRoles={['accountant']}>
+      <PendingOrders />
+    </ProtectedRoute>
     ),
   },
 

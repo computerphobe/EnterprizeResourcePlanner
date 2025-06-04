@@ -32,6 +32,7 @@ import {
   ShoppingCartOutlined,
   LinuxOutlined,
   OrderedListOutlined,
+  QuestionCircleFilled,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -223,6 +224,11 @@ function Sidebar({ collapsible, isMobile = false }) {
       ],
       accountant: [
         {
+          key: 'customer',
+          icon: <CustomerServiceOutlined />,
+          label: <Link to={'/customer'}>{translate('customers')}</Link>,
+        },
+        {
           key: 'invoices',
           icon: <ContainerOutlined />,
           label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
@@ -241,7 +247,12 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'reports',
           icon: <ReconciliationOutlined />,
           label: <Link to={'/reports'}>{translate('financial_reports')}</Link>,
-        }
+        },
+        {
+          key: 'pendingOrders',
+          icon : <QuestionCircleFilled />,
+          label: <Link to={'/pending'}>{translate('Pending Invoices')}</Link>
+        },
       ],
       // Default role (if role not found)
       default: []

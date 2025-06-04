@@ -1,200 +1,235 @@
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
-import { Form, Input, InputNumber, Button, Select, Divider, Row, Col } from 'antd';
-
+import {
+  Form,
+  Input,
+  InputNumber,
+  Button,
+  Select,
+  Divider,
+  Row,
+  Col,
+  Spin,
+  message,
+  DatePicker,
+} from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
-import { DatePicker } from 'antd';
-
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
-
 import ItemRow from '@/modules/ErpPanelModule/ItemRow';
-
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
 import { selectFinanceSettings } from '@/redux/settings/selectors';
 import { useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
-
 import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import SelectAsync from '@/components/SelectAsync';
 
-export default function InvoiceForm({ subTotal = 0, current = null }) {
+// ✅ This is now the outer component that only passes props
+const InvoiceForm = ({ subTotal = 0, current = null, form }) => {
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('orderId');
   const { last_invoice_number } = useSelector(selectFinanceSettings);
 
-  if (last_invoice_number === undefined) {
-    return <></>;
+  if (!form || last_invoice_number === undefined) {
+    return null;
   }
 
-  return <LoadInvoiceForm subTotal={subTotal} current={current} />;
-}
+  return (
+    <LoadInvoiceForm
+      subTotal={subTotal}
+      current={current}
+      orderId={orderId}
+      form={form}
+    />
+  );
+};
 
-function LoadInvoiceForm({ subTotal = 0, current = null }) {
+const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form }) => {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { last_invoice_number } = useSelector(selectFinanceSettings);
   const [total, setTotal] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
   const [taxTotal, setTaxTotal] = useState(0);
-  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
-  const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
+  const [currentYear] = useState(() => new Date().getFullYear());
+  const [lastNumber] = useState(() => last_invoice_number + 1);
+  const [loading, setLoading] = useState(false);
+  const [calculatedSubTotal, setCalculatedSubTotal] = useState(0);
+  const addFieldButtonRef = useRef(null);
 
-  const handelTaxChange = (value) => {
-    setTaxRate(value / 100);
+  const calculateSubTotal = (items) => {
+    return items.reduce((sum, item) => {
+      return calculate.add(sum, calculate.multiply(item.quantity || 0, item.price || 0));
+    }, 0);
+  };
+
+  const handleTaxChange = (value) => {
+    const newTaxRate = value / 100;
+    setTaxRate(newTaxRate);
+    const newTaxTotal = calculate.multiply(calculatedSubTotal, newTaxRate);
+    const newTotal = calculate.add(calculatedSubTotal, newTaxTotal);
+    setTaxTotal(Number.parseFloat(newTaxTotal));
+    setTotal(Number.parseFloat(newTotal));
   };
 
   useEffect(() => {
-    if (current) {
-      const { taxRate = 0, year, number } = current;
-      setTaxRate(taxRate / 100);
-      setCurrentYear(year);
-      setLastNumber(number);
+    const token = localStorage.getItem('token');
+    if (!token || !orderId || !form) return;
+
+    const fetchOrderDetails = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/order/${orderId}/details`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok) {
+          const errorData = contentType.includes('application/json')
+            ? await res.json()
+            : await res.text();
+          throw new Error(errorData.message || 'Failed to load order details');
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          const formattedItems = data.order.items.map(item => {
+            const itemName = item.inventoryItem?.name || item.inventoryItem?.itemName || '';
+            const quantity = item.quantity;
+            const price = item.price;
+            const total = calculate.multiply(quantity, price);
+
+            return {
+              itemName,
+              description: item.description || '',
+              quantity,
+              price,
+              total, // ✅ Add this to satisfy Joi schema
+            };
+          });
+
+          form.setFieldsValue({
+            doctorName: data.doctorName,
+            hospitalName: data.hospitalName,
+            items: formattedItems,
+          });
+
+          const newSubTotal = calculateSubTotal(formattedItems);
+          setCalculatedSubTotal(newSubTotal);
+          const newTaxTotal = calculate.multiply(newSubTotal, taxRate);
+          const newTotal = calculate.add(newSubTotal, newTaxTotal);
+          setTaxTotal(Number.parseFloat(newTaxTotal));
+          setTotal(Number.parseFloat(newTotal));
+        } else {
+          throw new Error(data.message || 'Failed to load order details');
+        }
+      } catch (err) {
+        console.error('Error loading order details:', err);
+        message.error(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [orderId, form]);
+
+  const handleValuesChange = (changedValues, allValues) => {
+    if (changedValues.items || changedValues.taxRate !== undefined) {
+      const newSubTotal = calculateSubTotal(allValues.items || []);
+      setCalculatedSubTotal(newSubTotal);
+      const newTaxTotal = calculate.multiply(newSubTotal, taxRate);
+      const newTotal = calculate.add(newSubTotal, newTaxTotal);
+      setTaxTotal(Number.parseFloat(newTaxTotal));
+      setTotal(Number.parseFloat(newTotal));
     }
-  }, [current]);
-  useEffect(() => {
-    const currentTotal = calculate.add(calculate.multiply(subTotal, taxRate), subTotal);
-    setTaxTotal(Number.parseFloat(calculate.multiply(subTotal, taxRate)));
-    setTotal(Number.parseFloat(currentTotal));
-  }, [subTotal, taxRate]);
+  };
 
-  const addField = useRef(false);
-
-  useEffect(() => {
-    addField.current.click();
-  }, []);
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Spin size="large" />
+        <p>{translate('Loading order data...')}</p>
+      </div>
+    );
+  }
 
   return (
     <>
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={8}>
-          <Form.Item
-            name="client"
-            label={translate('Client')}
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
+        <Col span={8}>
+          <Form.Item name="client" label={translate('Client')} rules={[{ required: true }]}>
             <AutoCompleteAsync
-              entity={'client'}
+              entity="client"
               displayLabels={['name']}
-              searchFields={'name'}
-              redirectLabel={'Add New Client'}
+              searchFields="name"
+              onSelect={(client) => {
+                form.setFieldsValue({ client: client._id });
+              }}
+              outputValue="_id"
               withRedirect
-              urlToRedirect={'/customer'}
+              urlToRedirect="/customer"
+              redirectLabel={translate('Add New Client')}
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={3}>
-          <Form.Item
-            label={translate('number')}
-            name="number"
-            initialValue={lastNumber}
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
+        <Col span={3}>
+          <Form.Item label={translate('number')} name="number" rules={[{ required: true }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={3}>
-          <Form.Item
-            label={translate('year')}
-            name="year"
-            initialValue={currentYear}
-            rules={[
-              {
-                required: true,
-              },
-            ]}
-          >
+        <Col span={3}>
+          <Form.Item label={translate('year')} name="year" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-
-        <Col className="gutter-row" span={5}>
-          <Form.Item
-            label={translate('status')}
-            name="status"
-            rules={[
-              {
-                required: false,
-              },
-            ]}
-            initialValue={'draft'}
-          >
+        <Col span={5}>
+          <Form.Item label={translate('status')} name="status">
             <Select
               options={[
                 { value: 'draft', label: translate('Draft') },
                 { value: 'pending', label: translate('Pending') },
                 { value: 'sent', label: translate('Sent') },
               ]}
-            ></Select>
+            />
           </Form.Item>
         </Col>
-
-        <Col className="gutter-row" span={8}>
-          <Form.Item
-            name="date"
-            label={translate('Date')}
-            rules={[
-              {
-                required: true,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs()}
-          >
+        <Col span={8}>
+          <Form.Item name="date" label={translate('Date')} rules={[{ required: true, type: 'object' }]}>
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            name="expiredDate"
-            label={translate('Expire Date')}
-            rules={[
-              {
-                required: true,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs().add(30, 'days')}
-          >
+        <Col span={6}>
+          <Form.Item name="expiredDate" label={translate('Expire Date')} rules={[{ required: true, type: 'object' }]}>
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={10}>
+        <Col span={10}>
           <Form.Item label={translate('Note')} name="notes">
             <Input />
           </Form.Item>
         </Col>
       </Row>
+
       <Divider dashed />
+
       <Row gutter={[12, 12]} style={{ position: 'relative' }}>
-        <Col className="gutter-row" span={5}>
-          <p>{translate('Item')}</p>
-        </Col>
-        <Col className="gutter-row" span={7}>
-          <p>{translate('Description')}</p>
-        </Col>
-        <Col className="gutter-row" span={3}>
-          <p>{translate('Quantity')}</p>{' '}
-        </Col>
-        <Col className="gutter-row" span={4}>
-          <p>{translate('Price')}</p>
-        </Col>
-        <Col className="gutter-row" span={5}>
-          <p>{translate('Total')}</p>
-        </Col>
+        <Col span={5}><p>{translate('Item')}</p></Col>
+        <Col span={7}><p>{translate('Description')}</p></Col>
+        <Col span={3}><p>{translate('Quantity')}</p></Col>
+        <Col span={4}><p>{translate('Price')}</p></Col>
+        <Col span={5}><p>{translate('Total')}</p></Col>
       </Row>
+
       <Form.List name="items">
         {(fields, { add, remove }) => (
           <>
             {fields.map((field) => (
-              <ItemRow key={field.key} remove={remove} field={field} current={current}></ItemRow>
+              <ItemRow key={field.key} remove={remove} field={field} current={current} />
             ))}
             <Form.Item>
               <Button
@@ -202,7 +237,7 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
                 onClick={() => add()}
                 block
                 icon={<PlusOutlined />}
-                ref={addField}
+                ref={addFieldButtonRef}
               >
                 {translate('Add field')}
               </Button>
@@ -210,77 +245,61 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
           </>
         )}
       </Form.List>
+
       <Divider dashed />
-      <div style={{ position: 'relative', width: ' 100%', float: 'right' }}>
+
+      <div style={{ width: '100%', float: 'right' }}>
         <Row gutter={[12, -5]}>
-          <Col className="gutter-row" span={5}>
+          <Col span={5}>
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
                 {translate('Save')}
               </Button>
             </Form.Item>
           </Col>
-          <Col className="gutter-row" span={4} offset={10}>
-            <p
-              style={{
-                paddingLeft: '12px',
-                paddingTop: '5px',
-                margin: 0,
-                textAlign: 'right',
-              }}
-            >
-              {translate('Sub Total')} :
+          <Col span={4} offset={10}>
+            <p style={{ paddingLeft: 12, paddingTop: 5, margin: 0, textAlign: 'right' }}>
+              {translate('Sub Total')}:
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={subTotal} />
+          <Col span={5}>
+            <MoneyInputFormItem readOnly value={calculatedSubTotal} />
           </Col>
         </Row>
+
         <Row gutter={[12, -5]}>
-          <Col className="gutter-row" span={4} offset={15}>
-            <Form.Item
-              name="taxRate"
-              rules={[
-                {
-                  required: true,
-                },
-              ]}
-            >
+          <Col span={4} offset={15}>
+            <Form.Item name="taxRate" rules={[{ required: true }]}>
               <SelectAsync
-                value={taxRate}
-                onChange={handelTaxChange}
-                entity={'taxes'}
-                outputValue={'taxValue'}
+                onChange={handleTaxChange}
+                entity="taxes"
+                outputValue="taxValue"
                 displayLabels={['taxName']}
-                withRedirect={true}
+                withRedirect
                 urlToRedirect="/taxes"
                 redirectLabel={translate('Add New Tax')}
                 placeholder={translate('Select Tax Value')}
               />
             </Form.Item>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col span={5}>
             <MoneyInputFormItem readOnly value={taxTotal} />
           </Col>
         </Row>
+
         <Row gutter={[12, -5]}>
-          <Col className="gutter-row" span={4} offset={15}>
-            <p
-              style={{
-                paddingLeft: '12px',
-                paddingTop: '5px',
-                margin: 0,
-                textAlign: 'right',
-              }}
-            >
-              {translate('Total')} :
+          <Col span={4} offset={15}>
+            <p style={{ paddingLeft: 12, paddingTop: 5, margin: 0, textAlign: 'right' }}>
+              {translate('Total')}:
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col span={5}>
             <MoneyInputFormItem readOnly value={total} />
           </Col>
         </Row>
       </div>
     </>
   );
-}
+};
+
+export default InvoiceForm;
