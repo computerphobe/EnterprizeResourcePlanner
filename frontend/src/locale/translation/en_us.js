@@ -450,6 +450,11 @@ const lang = {
   offers: 'Offers',
   proforma_invoices: 'quote',
   search: 'search',
+  current_orders: 'Current Orders',
+  pickup_confirmation: 'Pickup Confirmation',
+  delivery_confirmation: 'Delivery Confirmation',
+  delivery_history: 'Delivery History',
+
 };
 
 export default lang;

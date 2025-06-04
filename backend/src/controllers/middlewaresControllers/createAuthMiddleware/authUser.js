@@ -1,7 +1,7 @@
 const AdminPassword = require('@/models/coreModels/AdminPassword');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
+console.log('in the file authUser.js')
 const authUser = async (req, res, { user, databasePassword, password, UserPasswordModel }) => {
   const isMatch = await bcrypt.compare(databasePassword.salt + password, databasePassword.password);
 console.log("reached authUser", isMatch, password, databasePassword.salt + password, databasePassword.password)
@@ -13,16 +13,19 @@ console.log("reached authUser", isMatch, password, databasePassword.salt + passw
     });
 
   if (isMatch === true) {
+    console.log('signing the token')
     const token = jwt.sign(
       {
         id: user._id,
+        role: user.role,
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: req.body.remember ? 365 * 24 + 'h' : '24h' }
     );
 
     await UserPasswordModel.findOneAndUpdate(
-      { user: user._id },
+      { user: user._id,  },
       { $push: { loggedSessions: token } },
       {
         new: true,
@@ -52,6 +55,8 @@ console.log("reached authUser", isMatch, password, databasePassword.salt + passw
       },
       message: 'Successfully login user',
     });
+    console.log('jwt token', token);
+    console.log('user', user.role);
   } else {
     return res.status(403).json({
       success: false,

@@ -1,27 +1,30 @@
-import { Navigate } from 'react-router-dom';
+// src/components/ProtectedRoute.jsx
+import React from 'react';
 import { useSelector } from 'react-redux';
+import { Navigate } from 'react-router-dom';
 import { selectAuth } from '@/redux/auth/selectors';
 
-// Updated ProtectedRoute to use Redux state for role checking
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { current: user, isLoggedIn } = useSelector(selectAuth);
-  console.log('ProtectedRoute checking access:', { user, isLoggedIn, allowedRoles });
-  
-  // If not logged in, redirect to login
-  if (!isLoggedIn || !user) {
-    console.log('User not logged in, redirecting to login');
+const ProtectedRoute = ({ allowedRoles, children }) => {
+  // Grab the 'current' user object from the auth slice
+  const { current } = useSelector(selectAuth);
+
+  // Extract role from current user
+  const roleRaw = current?.role || '';
+  const role = roleRaw.trim().toLowerCase();
+  // If no role found, user is not authenticated, redirect to login
+  if (!role) {
     return <Navigate to="/login" replace />;
   }
-  
-  // If no specific roles required or user has allowed role, grant access
-  if (allowedRoles.length === 0 || allowedRoles.includes(user.role)) {
-    console.log('Access granted to route');
-    return children;
+
+  // Check if the role is allowed for this route
+  const allowed = allowedRoles.map(r => r.toLowerCase());
+  if (!allowed.includes(role)) {
+    // Role not authorized, redirect to home or some other page
+    return <Navigate to="/" replace />;
   }
-  
-  // User doesn't have required role, redirect to default page
-  console.log('Access denied - user role:', user.role, 'required:', allowedRoles);
-  return <Navigate to="/" replace />;
+
+  // Authorized: render the children components
+  return children;
 };
 
 export default ProtectedRoute;
