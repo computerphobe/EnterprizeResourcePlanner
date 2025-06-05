@@ -40,6 +40,7 @@ const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
 const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
+const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 export const routes = [
   { path: '/logout', element: <Logout /> },
@@ -67,10 +68,8 @@ export const routes = [
   { path: '/purchase', element: <PurchasePage /> },
   { path: '/supplier', element: <SupplierPage /> },
   { path: '/register', element: <RegisterUser /> },
-  {path : '/order', element: <OrderList />},
-
+  { path: '/order', element: <OrderList /> },
   { path: '/', element: <Dashboard /> },
-
   {
     path: '/doctor',
     element: (
@@ -103,7 +102,6 @@ export const routes = [
       </ProtectedRoute>
     ),
   },
-
   {
     path: '/current-orders',
     element: (
@@ -138,9 +136,10 @@ export const routes = [
   },
   {
     path: '/pending',
-    element:( <ProtectedRoute allowedRoles={['accountant']}>
-      <PendingOrders />
-    </ProtectedRoute>
+    element: (
+      <ProtectedRoute allowedRoles={['accountant']}>
+        <PendingOrders />
+      </ProtectedRoute>
     ),
   },
   {
@@ -149,8 +148,15 @@ export const routes = [
       <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
         <Ledger />
       </ProtectedRoute>
-    )
+    ),
   },
-
+  {
+    path: '/expenses',
+    element: (
+      <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
+        <ExpensesPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: '*', element: <NotFound /> },
 ];
