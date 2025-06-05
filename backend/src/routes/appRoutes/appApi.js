@@ -8,7 +8,7 @@ const deliveryController = require('@/controllers/appControllers/deliveryControl
 const roleMiddleware = require('@/middleware/roleMiddleware');
 const authenticateToken = require('@/middleware/authMiddleware');
 const orderController = require('@/controllers/appControllers/orderController');
-
+const ledgerController = require('@/controllers/appControllers/ledgerController');
 // Dynamic CRUD routes generator
 const routerApp = (entity, controller) => {
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
@@ -43,10 +43,17 @@ router.route('/order/pending-invoice').get(
   authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), 
   catchErrors(orderController.getPendingInvoices)
 )
-
 router.route('/order/:orderId/details')
   .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(orderController.getOrderWithInventoryDetails));
+router.route('/ledger/client/:clientId')
+  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(ledgerController.getClientLedger));
 
+router.route('/ledger/summary')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(ledgerController.getLedgerSummary)
+  );
 
 
 // 🚚 Deliverer Dashboard Routes

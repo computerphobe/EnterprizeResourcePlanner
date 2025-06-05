@@ -42,7 +42,8 @@ const routesList = [
     controllerName: 'orderController',
     modelName: 'Order'
   },
-  { entity: 'admin', controllerName: 'adminController', modelName: 'Admin' }
+  { entity: 'admin', controllerName: 'adminController', modelName: 'Admin' },
+  { entity: 'ledger', controllerName: 'ledgerController', modelName: 'Ledger' },
 ];
 
 for (const filePath of appModelsFiles) {

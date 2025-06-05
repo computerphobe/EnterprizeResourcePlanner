@@ -33,6 +33,7 @@ import {
   LinuxOutlined,
   OrderedListOutlined,
   QuestionCircleFilled,
+  LinkedinFilled,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -237,6 +238,11 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'payments',
           icon: <CreditCardOutlined />,
           label: <Link to={'/payment'}>{translate('payments')}</Link>,
+        },
+        {
+          key: 'Client Ledger',
+          icon: <LinkedinFilled />,
+          label: <Link to={'/ledger'}>{ translate('Client Ledger') }</Link>
         },
         {
           key: 'expenses',

@@ -1,86 +1,104 @@
 const mongoose = require('mongoose');
 
-const Model = mongoose.model('Payment');
-const Invoice = mongoose.model('Invoice');
-const custom = require('@/controllers/pdfController');
+const PaymentModel = mongoose.model('Payment');
+const InvoiceModel = mongoose.model('Invoice');
+const GeneralLedger = require('@/models/appModels/GeneralLedger'); // Use the correct path to your model
 
 const { calculate } = require('@/helpers');
 
 const create = async (req, res) => {
-  // Creating a new document in the collection
-  if (req.body.amount === 0) {
-    return res.status(202).json({
-      success: false,
-      result: null,
-      message: `The Minimum Amount couldn't be 0`,
-    });
-  }
+  try {
+    const { amount, invoice: invoiceId, account } = req.body;
 
-  const currentInvoice = await Invoice.findOne({
-    _id: req.body.invoice,
-    removed: false,
-  });
-
-  const {
-    total: previousTotal,
-    discount: previousDiscount,
-    credit: previousCredit,
-  } = currentInvoice;
-
-  const maxAmount = calculate.sub(calculate.sub(previousTotal, previousDiscount), previousCredit);
-
-  if (req.body.amount > maxAmount) {
-    return res.status(202).json({
-      success: false,
-      result: null,
-      message: `The Max Amount you can add is ${maxAmount}`,
-    });
-  }
-  req.body['createdBy'] = req.admin._id;
-
-  const result = await Model.create(req.body);
-
-  const fileId = 'payment-' + result._id + '.pdf';
-  const updatePath = await Model.findOneAndUpdate(
-    {
-      _id: result._id.toString(),
-      removed: false,
-    },
-    { pdf: fileId },
-    {
-      new: true,
+    if (amount === 0) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: "The minimum amount can't be 0",
+      });
     }
-  ).exec();
-  // Returning successfull response
 
-  const { _id: paymentId, amount } = result;
-  const { id: invoiceId, total, discount, credit } = currentInvoice;
-
-  let paymentStatus =
-    calculate.sub(total, discount) === calculate.add(credit, amount)
-      ? 'paid'
-      : calculate.add(credit, amount) > 0
-      ? 'partially'
-      : 'unpaid';
-
-  const invoiceUpdate = await Invoice.findOneAndUpdate(
-    { _id: req.body.invoice },
-    {
-      $push: { payment: paymentId.toString() },
-      $inc: { credit: amount },
-      $set: { paymentStatus: paymentStatus },
-    },
-    {
-      new: true, // return the new result instead of the old one
-      runValidators: true,
+    // Fetch invoice to validate
+    const currentInvoice = await InvoiceModel.findOne({ _id: invoiceId, removed: false });
+    if (!currentInvoice) {
+      return res.status(404).json({
+        success: false,
+        result: null,
+        message: 'Invoice not found',
+      });
     }
-  ).exec();
 
-  return res.status(200).json({
-    success: true,
-    result: updatePath,
-    message: 'Payment Invoice created successfully',
-  });
+    const { total, discount, credit: previousCredit } = currentInvoice;
+    const maxAmount = calculate.sub(calculate.sub(total, discount), previousCredit);
+
+    if (amount > maxAmount) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: `The maximum amount you can add is ${maxAmount}`,
+      });
+    }
+
+    req.body.createdBy = req.admin._id;
+
+    // Create payment
+    const payment = await PaymentModel.create(req.body);
+
+    // Update PDF path on payment
+    const fileId = `payment-${payment._id}.pdf`;
+    const updatedPayment = await PaymentModel.findByIdAndUpdate(
+      payment._id,
+      { pdf: fileId },
+      { new: true }
+    );
+
+    // Calculate new payment status
+    const updatedCredit = calculate.add(previousCredit, amount);
+    let paymentStatus = 'unpaid';
+    if (calculate.sub(total, discount) === updatedCredit) {
+      paymentStatus = 'paid';
+    } else if (updatedCredit > 0) {
+      paymentStatus = 'partially';
+    }
+
+    // Update invoice with new payment info
+    await InvoiceModel.findByIdAndUpdate(
+      invoiceId,
+      {
+        $push: { payment: payment._id },
+        $inc: { credit: amount },
+        $set: { paymentStatus },
+      },
+      { new: true, runValidators: true }
+    );
+
+    // Create general ledger entry for this payment
+    // Payments are usually debit entries on cash/bank (asset), credit on revenue or accounts receivable.
+    // Assuming here debit increases assets (cash/bank), so debit = amount, credit = 0
+    try {
+      await GeneralLedger.create({
+        date: new Date(),
+        account: account || 'Cash/Bank',
+        type: 'asset',  // Payment received increases asset
+        description: `Payment recorded for Invoice ${invoiceId}`,
+        debit: amount,    // Debit since cash received
+        credit: 0,
+        invoiceId,
+      });
+    } catch (ledgerErr) {
+      console.error('Failed to create general ledger entry:', ledgerErr.message);
+      // Do not block response
+    }
+
+    return res.status(200).json({
+      success: true,
+      result: updatedPayment,
+      message: 'Payment created successfully',
+    });
+  } catch (err) {
+    console.error('Payment creation error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 module.exports = create;
