@@ -9,7 +9,7 @@ const roleMiddleware = require('@/middleware/roleMiddleware');
 const authenticateToken = require('@/middleware/authMiddleware');
 const orderController = require('@/controllers/appControllers/orderController');
 const ledgerController = require('@/controllers/appControllers/ledgerController');
-const expenseController = require('@/controllers/appControllers/expenseController'); // <-- import expense controller
+const expenseController = require('@/controllers/appControllers/expenseController');
 
 // Dynamic CRUD routes generator
 const routerApp = (entity, controller) => {
@@ -75,6 +75,31 @@ router.route('/order/list')
 
 router.route('/order/:orderId/assignDelivery')
   .patch(authenticateToken, roleMiddleware(['owner', 'admin']), catchErrors(orderController.assignDeliverer));
+
+// --- NEW: Item Substitution Routes ---
+// Get available returned items for substitution
+router.route('/order/returns/available/:inventoryItemId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.getAvailableReturnedItems)
+  );
+
+// Substitute order item with returned item
+router.route('/order/:orderId/substitute')
+  .post(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.substituteOrderItem)
+  );
+
+// Get order with substitution details
+router.route('/order/:orderId/substitutions')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(orderController.getOrderWithSubstitutions)
+  );
 
 router.patch('/:id/assignDelivery', authenticateToken, roleMiddleware(['owner']), orderController.assignDeliverer); // optional legacy
 

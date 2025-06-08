@@ -1,9 +1,12 @@
 const Order = require('@/models/appModels/Order');
 const Admin = require('@/models/coreModels/Admin');
-const Inventory = require('@/models/appModels/Inventory')
-const mongoose = require('mongoose')
-console.log("order controller loaded")
-const delivererOrders = async ( req, res ) => {
+const Inventory = require('@/models/appModels/Inventory');
+const Returns = require('@/models/appModels/Returns');
+const mongoose = require('mongoose');
+
+console.log("order controller loaded");
+
+const delivererOrders = async (req, res) => {
   console.log('getCurrentOrdersForDeliverer endpoint hit');
   try {
     const delivererId = req.user.id;
@@ -20,7 +23,7 @@ const delivererOrders = async ( req, res ) => {
     console.error('Error fetching current deliveries:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
-}
+};
 
 const ownerOrders = async (req, res) => {
   console.log('getOrdersForOwner endpoint hit');
@@ -29,8 +32,8 @@ const ownerOrders = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate({
         path: 'doctorId',
-        match: { _id: { $ne: null } },  // only populate if not null
-        select: 'name role email'        // specify needed fields
+        match: { _id: { $ne: null } },
+        select: 'name role email'
       })
       .populate({
         path: 'delivererId',
@@ -77,7 +80,7 @@ const getPendingInvoices = async (req, res) => {
   try {
     const orders = await Order.find({
       isDeleted: false,
-      invoiceId: { $exists: false }, // or: invoiceId: null
+      invoiceId: { $exists: false },
     })
       .populate('doctorId', 'name')
       .populate('delivererId', 'name')
@@ -96,32 +99,95 @@ const getPendingInvoices = async (req, res) => {
   }
 };
 
+// Basic read method for single order
+const read = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId)
+      .populate('doctorId', 'name role email')
+      .populate('delivererId', 'name role email')
+      .populate('items.inventoryItem');
 
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    return res.json({ success: true, result: order });
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// NEW: Get order with substitution details (this was missing!)
+const getOrderWithSubstitutions = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    console.log('Fetching order with substitutions for orderId:', orderId);
+
+    const order = await Order.findById(orderId)
+      .populate('doctorId', 'name role email')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber'
+      })
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'orderNumber'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    return res.json({ success: true, result: order });
+  } catch (error) {
+    console.error('Error fetching order with substitutions:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Get order with inventory details and available returns
 const getOrderWithInventoryDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Find the order and populate inventoryItem references
     const order = await Order.findById(orderId).populate('items.inventoryItem');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Map through order items and replace price with latest from Inventory
+    // Get updated items with current inventory prices and available returns
     const updatedItems = await Promise.all(order.items.map(async (item) => {
-      // Fetch current inventory price for the item
       const inventoryItem = await Inventory.findById(item.inventoryItem._id);
+      
+      // Find available returns for this inventory item
+      const availableReturns = await Returns.find({
+        originalItemId: item.inventoryItem._id,
+        status: 'Available for reuse'
+      }).populate('originalItemId', 'itemName category price');
 
       return {
         _id: item._id,
         inventoryItem: item.inventoryItem,
         quantity: item.quantity,
-        price: inventoryItem ? inventoryItem.price : item.price, // fallback to existing price if inventory missing
+        price: inventoryItem ? inventoryItem.price : item.price,
+        availableReturns: availableReturns.map(ret => ({
+          _id: ret._id,
+          returnedQuantity: ret.returnedQuantity,
+          reason: ret.reason,
+          returnDate: ret.returnDate || ret.createdAt
+        }))
       };
     }));
 
-    // Return order with updated items (with fresh prices)
     return res.json({
       success: true,
       order: {
@@ -136,11 +202,184 @@ const getOrderWithInventoryDetails = async (req, res) => {
   }
 };
 
+// NEW: Get available returned items for substitution
+const getAvailableReturnedItems = async (req, res) => {
+  try {
+    const { inventoryItemId } = req.params;
+    console.log('Fetching available returns for inventory item:', inventoryItemId);
 
-  module.exports = {
-    assignDeliverer,
-    delivererOrders,
-    ownerOrders,
-    getPendingInvoices,
-    getOrderWithInventoryDetails,
-  };
+    const availableReturns = await Returns.find({
+      originalItemId: inventoryItemId,
+      status: 'Available for reuse',
+      returnedQuantity: { $gt: 0 }
+    })
+    .populate('originalItemId', 'itemName category price expiryDate batchNumber')
+    .populate({
+      path: 'returnOrder',
+      select: 'orderNumber'
+    })
+    .sort({ returnDate: -1 });
+
+    return res.json({
+      success: true,
+      result: availableReturns.map(returnItem => ({
+        _id: returnItem._id,
+        returnedQuantity: returnItem.returnedQuantity,
+        reason: returnItem.reason,
+        returnedDate: returnItem.returnDate,
+        inventoryItem: returnItem.originalItemId,
+        returnOrder: returnItem.returnOrder
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error fetching available returns:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// NEW: Substitute order item with returned item
+const substituteOrderItem = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    console.log("substituting from order : ", orderId)
+    const { orderItemId, returnItemId, quantityToSubstitute } = req.body;
+    // console.log('Substituting order item:', { orderId, orderItemId, returnItemId, quantityToSubstitute });
+    console.log('Substitution request:', { orderId, orderItemId, returnItemId, quantityToSubstitute });
+
+    // Validate input
+    if (!orderItemId || !returnItemId || !quantityToSubstitute || quantityToSubstitute <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order item ID, return item ID, and valid quantity are required'
+      });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId).populate('items.inventoryItem');
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    console.log('Order found:', order.id);
+    console.log('Order items:', order.items.map(item => item.id.toString()));
+    // Find the order item
+    const orderItem = order.items.find(item => item.id.toString() === orderItemId);
+    console.log('Order item found:', orderItem);
+    if (!orderItem) {
+      return res.status(404).json({ success: false, message: 'Order item not found' });
+    }
+
+    // Find the return item
+    const returnItem = await Returns.findById(returnItemId)
+      .populate('originalItemId')
+      .populate('returnOrder', 'orderNumber');
+    
+    if (!returnItem) {
+      return res.status(404).json({ success: false, message: 'Return item not found' });
+    }
+
+    // Validate return item
+    if (returnItem.status !== 'Available for reuse') {
+      return res.status(400).json({ success: false, message: 'Return item is not available for reuse' });
+    }
+
+    if (returnItem.returnedQuantity < quantityToSubstitute) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Insufficient returned quantity. Available: ${returnItem.returnedQuantity}, Requested: ${quantityToSubstitute}` 
+      });
+    }
+
+    // Validate that return item matches the order item
+    if (returnItem.originalItemId._id.toString() !== orderItem.inventoryItem._id.toString()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Return item does not match order item' 
+      });
+    }
+
+    // Start transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Update the return item quantity
+      if (returnItem.returnedQuantity === quantityToSubstitute) {
+        // Mark entire return as used
+        returnItem.status = 'Used';
+        returnItem.usedDate = new Date();
+        returnItem.returnedQuantity = 0;
+      } else {
+        // Reduce the returned quantity
+        returnItem.returnedQuantity -= quantityToSubstitute;
+      }
+
+      await returnItem.save({ session });
+
+      // Add substitution to order item
+      if (!orderItem.substitutions) {
+        orderItem.substitutions = [];
+      }
+
+      orderItem.substitutions.push({
+        returnItem: returnItemId,
+        quantitySubstituted: quantityToSubstitute,
+        substitutedDate: new Date(),
+        substitutedBy: req.user?.id || req.userId
+      });
+
+      // Save the order
+      await order.save({ session });
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      console.log('Substitution completed successfully');
+
+      return res.json({
+        success: true,
+        message: `Successfully substituted ${quantityToSubstitute} units of ${orderItem.inventoryItem.itemName}`,
+        result: {
+          orderItemId,
+          returnItemId,
+          quantitySubstituted: quantityToSubstitute,
+          itemName: orderItem.inventoryItem.itemName
+        }
+      });
+
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+
+  } catch (error) {
+    console.error('Error substituting order item:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+};
+
+const getAvailableReturnsForItem = async (req, res) => {
+  return getAvailableReturnedItems(req, res);
+};
+
+module.exports = {
+  assignDeliverer,
+  delivererOrders,
+  ownerOrders,
+  getPendingInvoices,
+  read,
+  getOrderWithSubstitutions,
+  getOrderWithInventoryDetails,
+  getAvailableReturnedItems,
+  substituteOrderItem,
+  getAvailableReturnsForItem,
+};
