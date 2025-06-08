@@ -93,9 +93,7 @@ const OrderList = () => {
       // First try the substitutions endpoint
       const response = await fetch(`/api/order/${orderId}/substitutions`, {
         headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
+      });      const data = await response.json();
       if (data.success && data.result) {
         console.log('✅ Fetched order details with substitutions:', data.result);
         console.log('✅ Order items with correct IDs:', data.result.items?.map(item => ({ 
@@ -103,6 +101,14 @@ const OrderList = () => {
           name: item.inventoryItem?.itemName,
           quantity: item.quantity 
         })));
+        
+        // Log the raw _id values to check for any hidden characters
+        if (data.result.items) {
+          console.log('🔍 RAW ORDER ITEM IDs FROM BACKEND:');
+          data.result.items.forEach((item, index) => {
+            console.log(`  Item ${index}: "${item._id}" (length: ${item._id?.length})`);
+          });
+        }
         
         setOrder(data.result);
         return;
@@ -154,9 +160,7 @@ const OrderList = () => {
       console.error(error.message)
       setAvailableReturns([]);
     }
-  };
-
-  // Handle substitution - ENHANCED WITH BETTER DEBUGGING
+  };  // Handle substitution - SIMPLIFIED APPROACH
   const handleSubstitution = async () => {
     if (!selectedReturn || !substituteQuantity) {
       message.error('Please select a return item and specify quantity');
@@ -173,43 +177,35 @@ const OrderList = () => {
       return;
     }
 
-    // ENHANCED DEBUG LOGGING
-    console.log('🔍 SUBSTITUTION DEBUG INFO:');
-    console.log('Selected Order ID:', selectedOrderId);
-    console.log('Selected Item Object:', selectedItem);
-    console.log('Selected Item ID (_id):', selectedItem._id);
-    console.log('Selected Item ID (toString):', selectedItem._id?.toString());
-    console.log('Selected Return Object:', selectedReturn);
-    console.log('Selected Return ID (_id):', selectedReturn._id);
-    console.log('Quantity to substitute:', substituteQuantity);
+    // SIMPLE APPROACH: Use inventory item ID instead of order item ID
+    // This eliminates the need for ID synchronization
+    const inventoryItemId = selectedItem.inventoryItem._id;
     
-    // Double-check current order items
-    if (order?.items) {
-      console.log('🔍 Current order items in state:');
-      order.items.forEach((item, index) => {
-        console.log(`Item ${index}:`, {
-          id: item._id,
-          name: item.inventoryItem?.itemName,
-          quantity: item.quantity
-        });
-      });
-    }
+    console.log('🚀 MAKING SUBSTITUTION REQUEST (SIMPLIFIED):');
+    console.log(`  selectedOrderId: "${selectedOrderId}"`);
+    console.log(`  inventoryItemId: "${inventoryItemId}"`);
+    console.log(`  selectedReturn._id: "${selectedReturn._id}"`);
+    console.log(`  quantityToSubstitute: ${substituteQuantity}`);
 
     setSubmitting(true);
     try {
+      const requestBody = {
+        inventoryItemId: inventoryItemId,  // Use inventory item ID instead of order item ID
+        returnItemId: selectedReturn._id,
+        quantityToSubstitute: substituteQuantity,
+      };
+      
+      console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch(`/api/order/${selectedOrderId}/substitute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          orderItemId: selectedItem._id,
-          returnItemId: selectedReturn._id,
-          quantityToSubstitute: substituteQuantity,
-        }),
+        body: JSON.stringify(requestBody),
       });
-      console.log('selected item ID', selectedItem._id);
+
       const data = await response.json();
       console.log('🔍 Substitution response:', data);
       if (!data.success) throw new Error(data.message);
@@ -250,12 +246,13 @@ const OrderList = () => {
       message.error(error.message || 'Failed to assign deliverer');
     }
   };
-
   // Open order details modal
   const openOrderDetailsModal = (orderId) => {
     console.log('🔍 Opening order details modal for orderId:', orderId);
     setSelectedOrderId(orderId);
     setSubstitutionModalVisible(true);
+    // Clear previous order data to force fresh fetch
+    setOrder(null);
     fetchOrderDetails(orderId);
   };
 
@@ -269,13 +266,29 @@ const OrderList = () => {
     setSelectedReturn(null);
     setSubstituteQuantity(1);
   };
-
   // Open item substitution modal - ENHANCED WITH VALIDATION
   const openItemSubstitutionModal = (item) => {
     console.log('🔍 Opening substitution modal for item:', item);
     console.log('🔍 Item ID:', item._id);
+    console.log('🔍 Item ID (toString):', item._id?.toString());
     console.log('🔍 Inventory Item:', item.inventoryItem);
     console.log('🔍 Inventory Item ID:', item.inventoryItem?._id);
+    
+    // Double-check against current order items in state
+    if (order?.items) {
+      console.log('🔍 All current order items in state:');
+      order.items.forEach((orderItem, index) => {
+        console.log(`  Item ${index}: ID=${orderItem._id}, Name=${orderItem.inventoryItem?.itemName}`);
+      });
+      
+      // Verify this item exists in current order
+      const itemExists = order.items.find(orderItem => orderItem._id?.toString() === item._id?.toString());
+      if (!itemExists) {
+        console.error('❌ Item not found in current order state! This is the problem.');
+        message.error('Item data is stale. Please close and reopen the order details.');
+        return;
+      }
+    }
     
     // Validate that we have the required data
     if (!item._id) {

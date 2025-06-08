@@ -132,9 +132,8 @@ const getOrderWithSubstitutions = async (req, res) => {
       .populate({
         path: 'items.inventoryItem',
         select: 'itemName category price expiryDate batchNumber'
-      })
-      .populate({
-        path: 'items.substitutions.returnId',
+      })      .populate({
+        path: 'items.substitutions.returnId',  // Fixed: use returnId to match schema
         populate: {
           path: 'originalItemId',
           select: 'orderNumber'
@@ -246,15 +245,29 @@ const substituteOrderItem = async (req, res) => {
   try {
     const { orderId } = req.params;
     console.log("substituting from order : ", orderId)
-    const { orderItemId, returnItemId, quantityToSubstitute } = req.body;
-    // console.log('Substituting order item:', { orderId, orderItemId, returnItemId, quantityToSubstitute });
-    console.log('Substitution request:', { orderId, orderItemId, returnItemId, quantityToSubstitute });
+    const { inventoryItemId, returnItemId, quantityToSubstitute } = req.body;
+    console.log('Substitution request:', { orderId, inventoryItemId, returnItemId, quantityToSubstitute });
 
     // Validate input
-    if (!orderItemId || !returnItemId || !quantityToSubstitute || quantityToSubstitute <= 0) {
+    if (!inventoryItemId || !returnItemId || !quantityToSubstitute || quantityToSubstitute <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Order item ID, return item ID, and valid quantity are required'
+        message: 'Inventory item ID, return item ID, and valid quantity are required'
+      });
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(inventoryItemId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid inventory item ID format'
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(returnItemId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid return item ID format'
       });
     }
 
@@ -263,13 +276,48 @@ const substituteOrderItem = async (req, res) => {
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
+    
+    if (!order.items || order.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Order has no items' });
+    }
+
     console.log('Order found:', order.id);
-    console.log('Order items:', order.items.map(item => item.id.toString()));
-    // Find the order item
-    const orderItem = order.items.find(item => item.id.toString() === orderItemId);
-    console.log('Order item found:', orderItem);
+    console.log('Order items:', order.items.map(item => ({ 
+      orderItemId: item._id.toString(), 
+      inventoryItemId: item.inventoryItem?._id.toString(),
+      name: item.inventoryItem?.itemName 
+    })));
+    console.log('Looking for inventory item ID:', inventoryItemId);
+    
+    // Find the order item by inventory item ID (much more reliable)
+    const orderItem = order.items.find(item => 
+      item.inventoryItem && item.inventoryItem._id.toString() === inventoryItemId.toString()
+    );
+    
+    console.log('Order item found:', orderItem ? {
+      orderItemId: orderItem._id.toString(),
+      inventoryItemId: orderItem.inventoryItem._id.toString(),
+      name: orderItem.inventoryItem.itemName
+    } : null);
+    
     if (!orderItem) {
-      return res.status(404).json({ success: false, message: 'Order item not found' });
+      console.log('Available inventory item IDs:', order.items.map(item => ({
+        orderItemId: item._id.toString(),
+        inventoryItemId: item.inventoryItem?._id.toString(),
+        name: item.inventoryItem?.itemName
+      })));
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order item not found for the specified inventory item',
+        debug: {
+          receivedInventoryItemId: inventoryItemId,
+          availableInventoryItems: order.items.map(item => ({
+            orderItemId: item._id.toString(),
+            inventoryItemId: item.inventoryItem?._id.toString(),
+            name: item.inventoryItem?.itemName
+          }))
+        }
+      });
     }
 
     // Find the return item
@@ -299,9 +347,7 @@ const substituteOrderItem = async (req, res) => {
         success: false, 
         message: 'Return item does not match order item' 
       });
-    }
-
-    // Start transaction
+    }    // Start transaction
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -325,9 +371,9 @@ const substituteOrderItem = async (req, res) => {
       }
 
       orderItem.substitutions.push({
-        returnItem: returnItemId,
+        returnId: returnItemId,  // Fixed: use returnId to match schema
         quantitySubstituted: quantityToSubstitute,
-        substitutedDate: new Date(),
+        substitutedAt: new Date(),  // Fixed: use substitutedAt to match schema
         substitutedBy: req.user?.id || req.userId
       });
 
@@ -336,6 +382,7 @@ const substituteOrderItem = async (req, res) => {
 
       // Commit transaction
       await session.commitTransaction();
+      session.endSession();
 
       console.log('Substitution completed successfully');
 
@@ -343,7 +390,7 @@ const substituteOrderItem = async (req, res) => {
         success: true,
         message: `Successfully substituted ${quantityToSubstitute} units of ${orderItem.inventoryItem.itemName}`,
         result: {
-          orderItemId,
+          inventoryItemId,
           returnItemId,
           quantitySubstituted: quantityToSubstitute,
           itemName: orderItem.inventoryItem.itemName
@@ -352,10 +399,14 @@ const substituteOrderItem = async (req, res) => {
 
     } catch (error) {
       // Rollback transaction on error
+      console.error('Transaction error:', error);
       await session.abortTransaction();
-      throw error;
-    } finally {
       session.endSession();
+      
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to complete substitution'
+      });
     }
 
   } catch (error) {
