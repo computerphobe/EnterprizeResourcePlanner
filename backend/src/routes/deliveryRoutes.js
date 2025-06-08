@@ -4,7 +4,7 @@ const router = express.Router();
 const Delivery = require('../models/appModels/Delivery');
 const verifyDeliverer = require('../middlewares/verifyDeliverer');
 const upload = require('../middleware/uploadMiddleware');
-const deliveryController = require('../controllers/deliveryController');
+const deliveryController = require('../controllers/appControllers/deliveryController');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 

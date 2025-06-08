@@ -4,10 +4,12 @@ const router = express.Router();
 
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
-const deliveryController = require('@/controllers/deliveryController');
+const deliveryController = require('@/controllers/appControllers/deliveryController');
 const roleMiddleware = require('@/middleware/roleMiddleware');
 const authenticateToken = require('@/middleware/authMiddleware');
 const orderController = require('@/controllers/appControllers/orderController');
+const ledgerController = require('@/controllers/appControllers/ledgerController');
+const expenseController = require('@/controllers/appControllers/expenseController');
 
 // Dynamic CRUD routes generator
 const routerApp = (entity, controller) => {
@@ -38,36 +40,104 @@ const routerApp = (entity, controller) => {
   }
 };
 
-// 🛡️ Delivery Routes
-router.route('/delivery/create')
-  .post(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.createDelivery));
-router.route('/delivery/read/:id')
-  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getDeliveryById));
-router.route('/delivery/update/:id')
-  .patch(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.updateDelivery));
-router.route('/delivery/delete/:id')
-  .delete(authenticateToken, roleMiddleware(['admin']), catchErrors(deliveryController.deleteDelivery));
-router.route('/delivery/list')
-  .get(authenticateToken, roleMiddleware(['admin', 'deliverer']), catchErrors(deliveryController.getAllDeliveries));
+// --- Accountant routes ---
+router.route('/order/pending-invoice').get(
+  authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), 
+  catchErrors(orderController.getPendingInvoices)
+);
 
-// 🚚 Deliverer Dashboard Routes
+router.route('/order/:orderId/details')
+  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(orderController.getOrderWithInventoryDetails));
+
+router.route('/ledger/client/:clientId')
+  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(ledgerController.getClientLedger));
+
+router.route('/ledger/summary')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(ledgerController.getLedgerSummary)
+  );
+
+// --- Deliverer Dashboard Routes ---
 router.route('/order/current')
   .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(orderController.delivererOrders));
-router.route('/deliveries/:id/pickup')
+
+router.route('/deliveries/pending-delivery')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
+
 router.route('/deliveries/:id/confirm')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));
 
-// 📦 Order Routes
+// --- Order Routes ---
 router.route('/order/list')
   .get(authenticateToken, roleMiddleware(['owner', 'deliverer']), catchErrors(orderController.ownerOrders));
 
 router.route('/order/:orderId/assignDelivery')
   .patch(authenticateToken, roleMiddleware(['owner', 'admin']), catchErrors(orderController.assignDeliverer));
 
+// --- NEW: Item Substitution Routes ---
+// Get available returned items for substitution
+router.route('/order/returns/available/:inventoryItemId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.getAvailableReturnedItems)
+  );
+
+// Substitute order item with returned item
+router.route('/order/:orderId/substitute')
+  .post(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.substituteOrderItem)
+  );
+
+// Get order with substitution details
+router.route('/order/:orderId/substitutions')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(orderController.getOrderWithSubstitutions)
+  );
+
 router.patch('/:id/assignDelivery', authenticateToken, roleMiddleware(['owner']), orderController.assignDeliverer); // optional legacy
 
-// 🧠 Register all dynamic entity-based routes
+// --- Expenses Module routes ---
+
+// Create expense
+router.post(
+  '/expenses/create',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(expenseController.createExpense)
+);
+
+// Get all expenses
+router.get(
+  '/expenses/list',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(expenseController.getExpenses)
+);
+
+// Soft delete expense
+router.delete(
+  '/expenses/delete/:id',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(expenseController.deleteExpense)
+);
+
+// Calculate net profit
+router.get(
+  '/expenses/net-profit',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(expenseController.calculateNetProfit)
+);
+
+// --- Register all dynamic entity-based routes ---
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);

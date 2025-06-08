@@ -20,6 +20,12 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     enum: ['daily', 'weekly', 'monthly', 'annually', 'quarter'],
   },
+  client: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Client',
+  required: true,
+  autopopulate: true,
+},
   date: {
     type: Date,
     required: true,
@@ -27,12 +33,6 @@ const invoiceSchema = new mongoose.Schema({
   expiredDate: {
     type: Date,
     required: true,
-  },
-  client: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Client',
-    required: true,
-    autopopulate: true,
   },
   converted: {
     from: {

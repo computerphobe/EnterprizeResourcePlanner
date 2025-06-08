@@ -1,9 +1,7 @@
 import { lazy } from 'react';
 import ProtectedRoute from '@/components/Protectedroutes';
+import PendingOrders from '@/pages/pendingOrders';
 
-// Lazy Imports
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const About = lazy(() => import('@/pages/About'));
 const Logout = lazy(() => import('@/pages/Logout.jsx'));
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'));
 const RegisterUser = lazy(() => import('@/pages/RegisterUsers.jsx'));
@@ -14,7 +12,7 @@ const Inventory = lazy(() => import('@/pages/inventoryTable'));
 const Returns = lazy(() => import('@/pages/returns'));
 const PurchasePage = lazy(() => import('@/pages/purchase'));
 const SupplierPage = lazy(() => import('@/pages/supplier'));
-const ExpensesPage = lazy(() => import('@/pages/Expenses'));
+// const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 // Invoice
 const Invoice = lazy(() => import('@/pages/Invoice'));
@@ -50,6 +48,7 @@ const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
 const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
+const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 // Export Routes
 export const routes = [
@@ -92,8 +91,16 @@ export const routes = [
   { path: '/settings', element: <Settings /> },
   { path: '/settings/edit/:settingsKey', element: <Settings /> },
   { path: '/taxes', element: <Taxes /> },
+  { path: '/profile', element: <Profile /> },
+  { path: '/inventory', element: <Inventory /> },
+  { path: '/returns', element: <Returns /> },
+  { path: '/purchase', element: <PurchasePage /> },
+  { path: '/supplier', element: <SupplierPage /> },
+  { path: '/register', element: <RegisterUser /> },
+  {path : '/order', element: <OrderList />},
 
-  // Protected Role-Based Dashboards
+  { path: '/', element: <Dashboard /> },
+
   {
     path: '/doctor',
     element: (
@@ -127,7 +134,6 @@ export const routes = [
     ),
   },
 
-  // Deliverer-specific Pages
   {
     path: '/current-orders',
     element: (
@@ -161,6 +167,5 @@ export const routes = [
     ),
   },
 
-  // 404 Catch-All
   { path: '*', element: <NotFound /> },
 ];

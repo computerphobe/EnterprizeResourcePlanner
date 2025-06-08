@@ -13,7 +13,23 @@ const orderSchema = new mongoose.Schema({
       required: true
     },
     quantity: Number,
-    price: Number
+    price: Number,
+    // NEW: Track substitutions made for this item
+    substitutions: [{
+      returnId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Return'
+      },
+      quantitySubstituted: Number,
+      substitutedAt: {
+        type: Date,
+        default: Date.now
+      },
+      substitutedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+      }
+    }]
   }],
   totalAmount: Number,
   status: {
@@ -42,7 +58,17 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin'
   },
+  invoiceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice',
+    default: null
+  },
   isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  // NEW: Track if any items have been substituted
+  hasSubstitutions: {
     type: Boolean,
     default: false
   }
@@ -55,6 +81,12 @@ orderSchema.pre('save', async function (next) {
     const count = await mongoose.model('Order').countDocuments();
     this.orderNumber = `${prefix}${String(count + 1).padStart(6, '0')}`;
   }
+
+  // Update hasSubstitutions flag
+  this.hasSubstitutions = this.items.some(item => 
+    item.substitutions && item.substitutions.length > 0
+  );
+
   next();
 });
 

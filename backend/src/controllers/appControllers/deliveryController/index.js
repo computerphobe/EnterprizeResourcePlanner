@@ -1,27 +1,13 @@
-const Delivery = require('../models/appModels/Delivery');
+const Delivery = require('@/models/appModels/Delivery');
 const mongoose = require('mongoose');
-
+console.log('Delivery controller initialized');
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-// GET /api/deliveries/current – Active deliveries
-const getCurrentDeliveries = async (req, res) => {
-  try {
-    const deliveries = await Delivery.find({
-      assignedTo: req.deliverer._id,
-      status: { $in: ['pending', 'picked_up', 'assigned'] },
-    }).sort({ createdAt: -1 });
-
-    res.status(200).json(deliveries);
-  } catch (error) {
-    console.error('Error fetching current deliveries:', error);
-    res.status(500).json({ error: 'Failed to fetch current deliveries' });
-  }
-};
 
 // POST /api/deliveries/:id/pickup – Confirm pickup
 const confirmPickup = async (req, res) => {
   const { id } = req.params;
-
+  console.log("Pickup confirmation initiated for delivery ID:", id);
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: 'Invalid delivery ID' });
   }
@@ -128,7 +114,6 @@ const getDashboardStats = async (req, res) => {
 };
 
 module.exports = {
-  getCurrentDeliveries,
   confirmPickup,
   confirmDelivery,
   getDeliveryHistory,

@@ -56,7 +56,7 @@ const DeliveryConfirmation = () => {
     formData.append('photo', photo);
 
     try {
-      const res = await fetch(`/api/deliveries/${id}/deliver`, {
+      const res = await fetch(`/api/deliveries/${id}/confirm`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
