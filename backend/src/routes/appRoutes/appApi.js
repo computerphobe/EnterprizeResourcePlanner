@@ -4,14 +4,20 @@ const router = express.Router();
 
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
+
 const deliveryController = require('@/controllers/appControllers/deliveryController');
-const roleMiddleware = require('@/middleware/roleMiddleware');
-const authenticateToken = require('@/middleware/authMiddleware');
 const orderController = require('@/controllers/appControllers/orderController');
 const ledgerController = require('@/controllers/appControllers/ledgerController');
-const expenseController = require('@/controllers/appControllers/expenseController'); // <-- import expense controller
+const expenseController = require('@/controllers/appControllers/expenseController');
 
-// Dynamic CRUD routes generator
+// Import auth and role middlewares
+const authenticateToken = require('@/middleware/authMiddleware');
+const roleMiddleware = require('@/middleware/roleMiddleware');
+
+// Financial Reports Routes (imported separately)
+const financialReportsRoutes = require('@/routes/appRoutes/financialReportsRoutes');
+
+// --- Dynamic CRUD routes generator ---
 const routerApp = (entity, controller) => {
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
   router.route(`/${entity}/read/:id`).get(catchErrors(controller['read']));
@@ -40,47 +46,81 @@ const routerApp = (entity, controller) => {
   }
 };
 
-// --- Accountant routes ---
-router.route('/order/pending-invoice').get(
-  authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), 
+// --- Accountant Routes ---
+router.get(
+  '/order/pending-invoice',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
   catchErrors(orderController.getPendingInvoices)
 );
 
-router.route('/order/:orderId/details')
-  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(orderController.getOrderWithInventoryDetails));
+router.get(
+  '/order/:orderId/details',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(orderController.getOrderWithInventoryDetails)
+);
 
-router.route('/ledger/client/:clientId')
-  .get(authenticateToken, roleMiddleware(['owner', 'admin', 'accountant']), catchErrors(ledgerController.getClientLedger));
+router.get(
+  '/ledger/client/:clientId',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(ledgerController.getClientLedger)
+);
 
-router.route('/ledger/summary')
-  .get(
-    authenticateToken, 
-    roleMiddleware(['owner', 'admin', 'accountant']), 
-    catchErrors(ledgerController.getLedgerSummary)
-  );
+router.get(
+  '/ledger/summary',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(ledgerController.getLedgerSummary)
+);
 
 // --- Deliverer Dashboard Routes ---
-router.route('/order/current')
-  .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(orderController.delivererOrders));
+router.get(
+  '/order/current',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(orderController.delivererOrders)
+);
 
-router.route('/deliveries/pending-delivery')
-  .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
+router.post(
+  '/deliveries/pending-delivery',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(deliveryController.confirmPickup)
+);
 
-router.route('/deliveries/:id/confirm')
-  .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));
+router.post(
+  '/deliveries/:id/confirm',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(deliveryController.confirmDelivery)
+);
 
-// --- Order Routes ---
-router.route('/order/list')
-  .get(authenticateToken, roleMiddleware(['owner', 'deliverer']), catchErrors(orderController.ownerOrders));
+// --- Order Management ---
+router.get(
+  '/order/list',
+  authenticateToken,
+  roleMiddleware(['owner', 'deliverer']),
+  catchErrors(orderController.ownerOrders)
+);
 
-router.route('/order/:orderId/assignDelivery')
-  .patch(authenticateToken, roleMiddleware(['owner', 'admin']), catchErrors(orderController.assignDeliverer));
+router.patch(
+  '/order/:orderId/assignDelivery',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin']),
+  catchErrors(orderController.assignDeliverer)
+);
 
-router.patch('/:id/assignDelivery', authenticateToken, roleMiddleware(['owner']), orderController.assignDeliverer); // optional legacy
+// Legacy fallback route for assigning delivery
+router.patch(
+  '/:id/assignDelivery',
+  authenticateToken,
+  roleMiddleware(['owner']),
+  catchErrors(orderController.assignDeliverer)
+);
 
-// --- Expenses Module routes ---
-
-// Create expense
+// --- Expenses Routes ---
 router.post(
   '/expenses/create',
   authenticateToken,
@@ -88,7 +128,6 @@ router.post(
   catchErrors(expenseController.createExpense)
 );
 
-// Get all expenses
 router.get(
   '/expenses/list',
   authenticateToken,
@@ -96,7 +135,6 @@ router.get(
   catchErrors(expenseController.getExpenses)
 );
 
-// Soft delete expense
 router.delete(
   '/expenses/delete/:id',
   authenticateToken,
@@ -104,7 +142,6 @@ router.delete(
   catchErrors(expenseController.deleteExpense)
 );
 
-// Calculate net profit
 router.get(
   '/expenses/net-profit',
   authenticateToken,
@@ -112,7 +149,15 @@ router.get(
   catchErrors(expenseController.calculateNetProfit)
 );
 
-// --- Register all dynamic entity-based routes ---
+// --- Financial Reports Routes ---
+router.use(
+  '/financial-reports',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  financialReportsRoutes
+);
+
+// --- Register entity-based dynamic routes ---
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);
