@@ -63,6 +63,9 @@ router.route('/ledger/summary')
 router.route('/order/current')
   .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(orderController.delivererOrders));
 
+router.route('/deliveries/:id/confirm')
+  .get(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmDelivery));
+
 router.route('/deliveries/pending-delivery')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
 
