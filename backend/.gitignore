@@ -5,4 +5,7 @@ node_modules/
 notes.md
 .env.local
 .env
+.env.development.local
+.env.test.local
 *.pdf
+ 

@@ -10,6 +10,7 @@ const expenseSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
+      'general',
       'rent',
       'salary',
       'utilities',

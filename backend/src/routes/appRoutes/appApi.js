@@ -111,8 +111,32 @@ router.patch(
   roleMiddleware(['owner', 'admin']),
   catchErrors(orderController.assignDeliverer)
 );
+// --- NEW: Item Substitution Routes ---
+// Get available returned items for substitution
+router.route('/order/returns/available/:inventoryItemId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.getAvailableReturnedItems)
+  );
 
-// Legacy fallback route for assigning delivery
+// Substitute order item with returned item
+router.route('/order/:orderId/substitute')
+  .post(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']), 
+    catchErrors(orderController.substituteOrderItem)
+  );
+
+// Get order with substitution details
+router.route('/order/:orderId/substitutions')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(orderController.getOrderWithSubstitutions)
+  );
+
+// --- Legacy fallback route for assigning delivery ---
 router.patch(
   '/:id/assignDelivery',
   authenticateToken,
