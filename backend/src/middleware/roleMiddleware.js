@@ -2,41 +2,51 @@ const jwt = require('jsonwebtoken');
 
 const roleMiddleware = (roles) => {
   return (req, res, next) => {
-    // Extract token from Authorization header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    // Check if token is missing
-    if (!token) {
+    const authHeader = req.headers['authorization'];
+
+    if (!authHeader) {
+      console.log('🚫 No Authorization header provided');
       return res.status(401).json({
         success: false,
         result: null,
-        message: 'Unauthorized: No token provided'
+        message: 'Unauthorized: No Authorization header provided',
+      });
+    }
+
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+
+    if (!token) {
+      console.log('🚫 Bearer token missing');
+      return res.status(401).json({
+        success: false,
+        result: null,
+        message: 'Unauthorized: Bearer token missing',
       });
     }
 
     try {
-      // Verify and decode the JWT token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      // Attach decoded user data to the request object
       req.user = decoded;
-      console.log('Decoded user:', req.user);
-      console.log('role of the user is : ', req.user.role)
-      // Check if the user's role matches one of the allowed roles
+
+      console.log('✅ Decoded user:', req.user);
+      console.log('👤 Role of the user:', req.user.role);
+
       if (!roles.includes(req.user.role)) {
+        console.log('⛔ User role not permitted:', req.user.role);
         return res.status(403).json({
           success: false,
           result: null,
-          message: 'Forbidden: Insufficient role'
+          message: 'Forbidden: Insufficient role',
         });
       }
 
-      // Continue to the next middleware or route handler
       next();
     } catch (error) {
-      // Handle errors related to JWT verification (invalid or expired token)
+      console.log('❌ Token validation error:', error.message);
       return res.status(401).json({
         success: false,
         result: null,
-        message: 'Unauthorized: Invalid or expired token'
+        message: 'Unauthorized: Invalid or expired token',
       });
     }
   };
