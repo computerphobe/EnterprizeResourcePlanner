@@ -73,7 +73,7 @@ const FinancialReports = () => {
       dataIndex: 'clientName',
       key: 'clientName',
       ellipsis: true,
-      sorter: (a, b) => a.clientName.localeCompare(b.clientName),
+      // sorter: (a, b) => a.clientName.localeCompare(b.clientName),
       defaultSortOrder: 'ascend',
       width: 200,
     },
