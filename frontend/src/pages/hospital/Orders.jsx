@@ -94,7 +94,7 @@ const Orders = () => {
 
     try {
       const response = await fetch('/api/hospital/orders', {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
@@ -116,61 +116,6 @@ const Orders = () => {
       setLoading(false);
     }
   };
-
-  const columns = [
-    {
-      title: 'Order Number',
-      dataIndex: 'orderNumber',
-      key: 'orderNumber',
-    },
-    {
-      title: 'Date',
-      dataIndex: 'createdAt',
-      key: 'date',
-      render: (date) => new Date(date).toLocaleDateString(),
-    },
-    {
-      title: 'Total Amount',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      render: (amount) => `₹ ${amount.toFixed(2)}`,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        let color = 'default';
-        if (status === 'completed') color = 'green';
-        else if (status === 'pending') color = 'orange';
-        else if (status === 'processing') color = 'blue';
-        else if (status === 'cancelled') color = 'red';
-        return <Tag color={color}>{status.toUpperCase()}</Tag>;
-      },
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => handleViewOrder(record)}
-            size="small"
-          >
-            View
-          </Button>
-          <Button
-            icon={<FilePdfOutlined />}
-            onClick={() => handleGeneratePDF(record)}
-            size="small"
-          >
-            PDF
-          </Button>
-        </Space>
-      ),
-    },
-  ];
 
   const handleViewOrder = (order) => {
     // TODO: Implement view order details
@@ -241,6 +186,61 @@ const Orders = () => {
       message.error(error.message || 'Failed to place order');
     }
   };
+
+  const columns = [
+    {
+      title: 'Order Number',
+      dataIndex: 'orderNumber',
+      key: 'orderNumber',
+    },
+    {
+      title: 'Date',
+      dataIndex: 'createdAt',
+      key: 'date',
+      render: (date) => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: 'Total Amount',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      render: (amount) => `₹ ${amount.toFixed(2)}`,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        let color = 'default';
+        if (status === 'completed') color = 'green';
+        else if (status === 'pending') color = 'orange';
+        else if (status === 'processing') color = 'blue';
+        else if (status === 'cancelled') color = 'red';
+        return <Tag color={color}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button
+            icon={<EyeOutlined />}
+            onClick={() => handleViewOrder(record)}
+            size="small"
+          >
+            View
+          </Button>
+          <Button
+            icon={<FilePdfOutlined />}
+            onClick={() => handleGeneratePDF(record)}
+            size="small"
+          >
+            PDF
+          </Button>
+        </Space>
+      ),
+    },
+  ];
 
   const paidOrders = orders.filter(order => order.status === 'completed');
   const pendingOrders = orders.filter(order => order.status === 'pending' || order.status === 'processing');
@@ -334,7 +334,7 @@ const Orders = () => {
             >
               {inventoryItems.map(item => (
                 <Select.Option key={item._id} value={item._id}>
-                  {item.name} - {item.category} (Stock: {item.quantity})
+                  {item.itemName} - {item.category} (₹{item.price} | Stock: {item.quantity})
                 </Select.Option>
               ))}
             </Select>

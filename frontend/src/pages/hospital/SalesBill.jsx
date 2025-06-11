@@ -1,47 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tabs, Tag, Button, Space, Typography, Card, Row, Col, Statistic } from 'antd';
-import { FilePdfOutlined, EyeOutlined, CheckCircleOutlined, ClockCircleOutlined, DollarOutlined } from '@ant-design/icons';
+import { Table, Tabs, Tag, Button, Space, Typography, message } from 'antd';
+import { EyeOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
 
 const { Title } = Typography;
 
 const SalesBill = () => {
-  const [bills, setBills] = useState([]);
+  const [salesBills, setSalesBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
   useEffect(() => {
-    fetchBills();
-  }, []);
+    fetchSalesBills();
+  }, [token]);
 
-  const fetchBills = async () => {
+  const fetchSalesBills = async () => {
+    if (!token) return setLoading(false);
+
     try {
       const response = await fetch('/api/hospital/sales-bills', {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch sales bills');
+      }
+      
       const data = await response.json();
       if (data.success) {
-        setBills(data.bills);
+        setSalesBills(data.result || []);
+      } else {
+        throw new Error(data.message || 'Failed to fetch sales bills');
       }
     } catch (error) {
-      console.error('Error fetching bills:', error);
+      message.error(error.message || 'Failed to fetch sales bills');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewBill = (bill) => {
+  const handleViewDetails = (bill) => {
     // TODO: Implement view bill details
     console.log('View bill:', bill);
   };
 
-  const handleDownloadPDF = (bill) => {
-    // TODO: Implement PDF download
-    console.log('Download PDF for bill:', bill);
+  const handleGeneratePDF = (bill) => {
+    // TODO: Implement PDF generation
+    console.log('Generate PDF for bill:', bill);
   };
 
   const columns = [
@@ -57,14 +67,9 @@ const SalesBill = () => {
       render: (date) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Patient Name',
-      dataIndex: 'patientName',
-      key: 'patientName',
-    },
-    {
-      title: 'Total Amount',
+      title: 'Amount',
       dataIndex: 'totalAmount',
-      key: 'totalAmount',
+      key: 'amount',
       render: (amount) => `₹ ${amount.toFixed(2)}`,
     },
     {
@@ -86,14 +91,14 @@ const SalesBill = () => {
         <Space>
           <Button
             icon={<EyeOutlined />}
-            onClick={() => handleViewBill(record)}
+            onClick={() => handleViewDetails(record)}
             size="small"
           >
             View
           </Button>
           <Button
             icon={<FilePdfOutlined />}
-            onClick={() => handleDownloadPDF(record)}
+            onClick={() => handleGeneratePDF(record)}
             size="small"
           >
             PDF
@@ -103,9 +108,8 @@ const SalesBill = () => {
     },
   ];
 
-  const paidBills = bills.filter(bill => bill.status === 'paid');
-  const pendingBills = bills.filter(bill => bill.status === 'pending');
-  const recentBills = bills.slice(0, 10); // Get last 10 bills
+  const paidBills = salesBills.filter(bill => bill.status === 'paid');
+  const pendingBills = salesBills.filter(bill => bill.status === 'pending');
 
   const items = [
     {
@@ -113,7 +117,7 @@ const SalesBill = () => {
       label: 'All Bills',
       children: (
         <Table
-          dataSource={bills}
+          dataSource={salesBills}
           columns={columns}
           rowKey="_id"
           loading={loading}
@@ -147,68 +151,13 @@ const SalesBill = () => {
         />
       ),
     },
-    {
-      key: '4',
-      label: 'Recent Bills',
-      children: (
-        <Table
-          dataSource={recentBills}
-          columns={columns}
-          rowKey="_id"
-          loading={loading}
-          pagination={false}
-        />
-      ),
-    },
   ];
 
   return (
     <div className="p-4">
-      <Title level={2}>Hospital Sales Bills</Title>
-      
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Total Bills"
-              value={bills.length}
-              prefix={<DollarOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Paid Bills"
-              value={paidBills.length}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Pending Bills"
-              value={pendingBills.length}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Total Revenue"
-              value={paidBills.reduce((sum, bill) => sum + bill.totalAmount, 0)}
-              prefix="₹"
-              precision={2}
-              valueStyle={{ color: '#1890ff' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
+      <div className="flex justify-between items-center mb-4">
+        <Title level={2}>Sales Bills</Title>
+      </div>
       <div className="bg-white rounded-lg shadow p-6">
         <Tabs defaultActiveKey="1" items={items} />
       </div>

@@ -18,9 +18,8 @@ const getCurrentDeliveries = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-// Confirm pickup of a delivery (updated to handle returnItems)
-exports.confirmPickup = async (req, res) => {
+// POST /api/deliveries/:id/pickup – Confirm pickup
+const confirmPickup = async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: 'Unauthorized: Missing user information' });
@@ -34,19 +33,8 @@ exports.confirmPickup = async (req, res) => {
       return res.status(400).json({ message: 'Invalid delivery ID' });
     }
 
-=======
-// POST /api/deliveries/:id/pickup – Confirm pickup
-const confirmPickup = async (req, res) => {
-  const { id } = req.params;
-
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({ error: 'Invalid delivery ID' });
-  }
-
-  try {
->>>>>>> 7927203b67c09f54d1a491b31a2b02557c49d043
     const delivery = await Delivery.findOne({
-      _id: id,
+      _id: deliveryId,
       assignedTo: req.deliverer._id,
       status: 'pending',
     });
