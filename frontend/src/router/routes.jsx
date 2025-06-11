@@ -50,6 +50,8 @@ const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirm
 const History = lazy(() => import('@/pages/delivery/History'));
 const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
+const FinancialReports = lazy(() => import('@/pages/FinancialReports'));
+
 // Export Routes
 export const routes = [
   // Public Routes
@@ -100,6 +102,7 @@ export const routes = [
   {path : '/order', element: <OrderList />},
 
   { path: '/', element: <Dashboard /> },
+
 
   {
     path: '/doctor',
@@ -166,6 +169,29 @@ export const routes = [
       </ProtectedRoute>
     ),
   },
-
+  {
+    path: '/pending',
+    element: (
+      <ProtectedRoute allowedRoles={['accountant']}>
+        <PendingOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/ledger',
+    element: (
+      <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
+        <Ledger />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/expenses',
+    element: (
+      <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
+        <ExpensesPage />
+      </ProtectedRoute>
+    ),
+  },
   { path: '*', element: <NotFound /> },
 ];

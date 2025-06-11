@@ -13,12 +13,56 @@ const delivererOrders = async (req, res) => {
     console.log('Fetching current deliveries for deliverer:', delivererId);
 
     const orders = await Order.find({ delivererId, status: { $in: ['pending', 'processing'] } })
-      .populate('doctorId')
-      .populate('delivererId')
+      .populate('doctorId', 'name role email')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber'
+      })
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'itemName category batchNumber expiryDate'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name')
       .sort({ createdAt: -1 });
 
     console.log('Current deliveries:', orders.length);
-    res.json({ success: true, result: orders });
+    
+    // Add substitution summary for deliverers
+    const ordersWithSubstitutionDetails = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Add substitution counts and details
+      orderObj.substitutionSummary = {
+        totalSubstitutions: 0,
+        itemsWithSubstitutions: 0,
+        details: []
+      };
+
+      orderObj.items.forEach(item => {
+        if (item.substitutions && item.substitutions.length > 0) {
+          orderObj.substitutionSummary.itemsWithSubstitutions++;
+          orderObj.substitutionSummary.totalSubstitutions += item.substitutions.length;
+          
+          item.substitutions.forEach(sub => {
+            orderObj.substitutionSummary.details.push({
+              originalItem: item.inventoryItem.itemName,
+              quantitySubstituted: sub.quantitySubstituted,
+              substitutedAt: sub.substitutedAt,
+              substitutedBy: sub.substitutedBy?.name || 'Unknown',
+              returnedItem: sub.returnId?.originalItemId?.itemName || 'Unknown Item'
+            });
+          });
+        }
+      });
+
+      return orderObj;
+    });
+
+    res.json({ success: true, result: ordersWithSubstitutionDetails });
   } catch (error) {
     console.error('Error fetching current deliveries:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

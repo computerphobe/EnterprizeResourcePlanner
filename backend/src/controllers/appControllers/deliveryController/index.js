@@ -40,7 +40,7 @@ const confirmPickup = async (req, res) => {
 // POST /api/deliveries/:id/deliver – Confirm delivery with photo
 const confirmDelivery = async (req, res) => {
   const { id } = req.params;
-
+  console.log("Delivery confirmation initiated for delivery ID:", id);
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: 'Invalid delivery ID' });
   }

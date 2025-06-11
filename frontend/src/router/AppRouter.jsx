@@ -12,6 +12,7 @@ export default function AppRouter() {
   // Map path prefixes to app names
   function getAppNameByPath(path) {
     if (path.startsWith('/deliverer') || path.startsWith('/deliver')) return 'delivery';
+    if (path.startsWith('/financial-reports')) return 'financialReports';  // <-- Added this line
     // Add other app prefix checks here if needed
     return 'default'; // fallback
   }
