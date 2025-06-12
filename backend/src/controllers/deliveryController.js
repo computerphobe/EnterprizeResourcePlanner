@@ -6,6 +6,10 @@ const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 // GET /api/deliveries/current – Active deliveries
 const getCurrentDeliveries = async (req, res) => {
   try {
+    if (!req.deliverer || !req.deliverer._id) {
+      return res.status(401).json({ error: 'Unauthorized: Deliverer not authenticated' });
+    }
+
     const deliveries = await Delivery.find({
       assignedTo: req.deliverer._id,
       status: { $in: ['pending', 'picked_up', 'assigned'] },
@@ -18,66 +22,52 @@ const getCurrentDeliveries = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-// Confirm pickup of a delivery (updated to handle returnItems)
-exports.confirmPickup = async (req, res) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: 'Unauthorized: Missing user information' });
-    }
-
-    const delivererId = req.user.id;
-    const deliveryId = req.params.id;
-    const { returnItems } = req.body;
-
-    if (!isValidObjectId(deliveryId)) {
-      return res.status(400).json({ message: 'Invalid delivery ID' });
-    }
-
-=======
 // POST /api/deliveries/:id/pickup – Confirm pickup
-const confirmPickup = async (req, res) => {
-  const { id } = req.params;
-
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({ error: 'Invalid delivery ID' });
+const handleConfirmPickup = async () => {
+  const formData = new FormData();
+  formData.append('orderId', selectedOrder.id);
+  formData.append('clientName', selectedOrder.clientName);
+  formData.append('address', selectedOrder.address);
+  formData.append('items', JSON.stringify(
+    selectedOrder.items.map(item => ({
+      name: item.name,
+      deliveredQty: item.deliveredQty,
+      price: item.price,
+      returnQty: Number(returnQuantities[item.name] || 0),
+    }))
+  ));
+  if (photoFile) {
+    formData.append('photo', photoFile);
   }
 
   try {
->>>>>>> 7927203b67c09f54d1a491b31a2b02557c49d043
-    const delivery = await Delivery.findOne({
-      _id: id,
-      assignedTo: req.deliverer._id,
-      status: 'pending',
+    const res = await fetch('http://localhost:5000/api/pickup/confirm', {
+      method: 'POST',
+      body: formData,
     });
 
-    if (!delivery) {
-      return res.status(404).json({ error: 'Delivery not found or unauthorized' });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Pickup confirmed successfully.');
+      handleCloseDialog();
+    } else {
+      console.error(data);
+      alert('Failed to confirm pickup.');
     }
-
-    // Update delivery status and pickup time
-    delivery.status = 'picked_up';
-    delivery.pickupDetails = {
-      pickupConfirmed: true,
-      pickupTime: new Date(),
-    };
-
-    // Save returnItems if provided and valid
-    if (returnItems && Array.isArray(returnItems)) {
-      delivery.returnItems = returnItems;
-    }
-
-    await delivery.save();
-    res.status(200).json({ message: 'Pickup confirmed', delivery });
-  } catch (error) {
-    console.error('Error confirming pickup:', error);
-    res.status(500).json({ error: 'Failed to confirm pickup' });
+  } catch (err) {
+    console.error(err);
+    alert('Error during pickup confirmation.');
   }
 };
+
 
 // POST /api/deliveries/:id/deliver – Confirm delivery with photo
 const confirmDelivery = async (req, res) => {
   const { id } = req.params;
+
+  if (!req.deliverer || !req.deliverer._id) {
+    return res.status(401).json({ error: 'Unauthorized: Deliverer not authenticated' });
+  }
 
   if (!isValidObjectId(id)) {
     return res.status(400).json({ error: 'Invalid delivery ID' });
@@ -117,6 +107,10 @@ const confirmDelivery = async (req, res) => {
 // GET /api/deliveries/history – Completed deliveries
 const getDeliveryHistory = async (req, res) => {
   try {
+    if (!req.deliverer || !req.deliverer._id) {
+      return res.status(401).json({ error: 'Unauthorized: Deliverer not authenticated' });
+    }
+
     const deliveries = await Delivery.find({
       assignedTo: req.deliverer._id,
       status: 'delivered',
@@ -132,6 +126,10 @@ const getDeliveryHistory = async (req, res) => {
 // GET /api/deliveries/dashboard-stats – Dashboard summary stats
 const getDashboardStats = async (req, res) => {
   try {
+    if (!req.deliverer || !req.deliverer._id) {
+      return res.status(401).json({ error: 'Unauthorized: Deliverer not authenticated' });
+    }
+
     const delivererId = req.deliverer._id;
 
     const total = await Delivery.countDocuments({ assignedTo: delivererId });
@@ -153,7 +151,7 @@ const getDashboardStats = async (req, res) => {
 
 module.exports = {
   getCurrentDeliveries,
-  confirmPickup,
+  handleConfirmPickup,
   confirmDelivery,
   getDeliveryHistory,
   getDashboardStats,
