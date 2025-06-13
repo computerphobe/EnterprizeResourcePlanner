@@ -16,12 +16,15 @@ const modelsFiles = globSync(pattern).map((filePath) => {
 const constrollersList = [];
 const appModelsList = [];
 const entityList = [];
+
+// ✅ Fixed modelName from 'Inventory' → 'ProductInventory'
 const routesList = [
   {
-    entity: 'inventory',
-    controllerName: 'inventoryController',
-    modelName: 'Inventory',
-  },
+  entity: 'inventory',
+  controllerName: 'productInventoryController',
+  modelName: 'ProductInventory',
+},
+
   {
     entity: 'returns',
     controllerName: 'returnsController',
@@ -75,5 +78,4 @@ for (const filePath of appModelsFiles) {
   }
 }
 
-// console.log('Routes List:', routesList);
 module.exports = { constrollersList, appModelsList, modelsFiles, entityList, routesList };

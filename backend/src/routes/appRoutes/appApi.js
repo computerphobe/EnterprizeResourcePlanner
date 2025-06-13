@@ -86,6 +86,7 @@ router.get(
 router.route('/deliveries/pending-delivery')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
 
+// ✅ Delivery confirmation route
 router.post(
   '/deliveries/:id/confirm',
   authenticateToken,
@@ -93,7 +94,7 @@ router.post(
   catchErrors(deliveryController.confirmDelivery)
 );
 
-// --- Order Management ---
+// 📦 Order Routes
 router.get(
   '/order/list',
   authenticateToken,
@@ -107,14 +108,22 @@ router.patch(
   roleMiddleware(['owner', 'admin']),
   catchErrors(orderController.assignDeliverer)
 );
-// --- NEW: Item Substitution Routes ---
-// Get available returned items for substitution
-router.route('/order/returns/available/:inventoryItemId')
-  .get(
-    authenticateToken, 
-    roleMiddleware(['owner', 'admin']), 
-    catchErrors(orderController.getAvailableReturnedItems)
-  );
+
+// ✅ Optional legacy route
+router.patch(
+  '/:id/assignDelivery',
+  authenticateToken,
+  roleMiddleware(['owner']),
+  orderController.assignDeliverer
+);
+
+// 🆕 Item Substitution Routes
+router.get(
+  '/order/returns/available/:inventoryItemId',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin']),
+  catchErrors(orderController.getAvailableReturnedItems)
+);
 
 // Substitute order item with returned item
 router.route('/order/:orderId/substitute')
@@ -182,5 +191,8 @@ routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);
 });
+// ✅ REGISTER PRODUCT ROUTES HERE
+const productRoutes = require('./productRoutes');
+router.use('/productinventory', productRoutes); // ✅ MOUNT IT HERE
 
 module.exports = router;
