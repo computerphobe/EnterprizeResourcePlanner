@@ -93,13 +93,11 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
             ? await res.json()
             : await res.text();
           throw new Error(errorData.message || 'Failed to load order details');
-        }
-
-        const data = await res.json();
+        }        const data = await res.json();
         if (data.success) {
           const formattedItems = data.order.items.map(item => {
             const itemName = item.inventoryItem?.name || item.inventoryItem?.itemName || '';
-            const quantity = item.quantity;
+            const quantity = item.quantity; // This is now the "used" quantity
             const price = item.price;
             const total = calculate.multiply(quantity, price);
 
@@ -109,14 +107,32 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
               quantity,
               price,
               total, // ✅ Add this to satisfy Joi schema
+              // Additional info for reference
+              originalQuantity: item.originalQuantity,
+              returnedQuantity: item.returnedQuantity
             };
-          });
-
-          form.setFieldsValue({
+          });          // Check if any items were completely returned (filtered out)
+          const hasReturns = data.order.hasReturns;
+          const filteredItemCount = data.order.filteredItemCount || 0;
+          
+          if (hasReturns) {
+            const returnMessage = filteredItemCount > 0 
+              ? `Invoice adjusted for returned items. ${filteredItemCount} item(s) completely returned and excluded. Only "used" quantities are included.`
+              : 'Invoice adjusted for returned items. Only "used" quantities are included.';
+            message.info(returnMessage);
+          }          form.setFieldsValue({
+            client: data.client, // Set the full client object for AutoCompleteAsync
             doctorName: data.doctorName,
             hospitalName: data.hospitalName,
             items: formattedItems,
           });
+
+          // If no client was auto-created/found, show a message
+          if (!data.client) {
+            message.warning('No existing client found for this doctor/hospital. Please select or create a client manually.');
+          } else {
+            message.success(`Client "${data.client.name}" automatically selected for this order.`);
+          }
 
           const newSubTotal = calculateSubTotal(formattedItems);
           setCalculatedSubTotal(newSubTotal);
@@ -162,13 +178,14 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
     <>
       <Row gutter={[12, 0]}>
         <Col span={8}>
-          <Form.Item name="client" label={translate('Client')} rules={[{ required: true }]}>
-            <AutoCompleteAsync
+          <Form.Item name="client" label={translate('Client')} rules={[{ required: true }]}>            <AutoCompleteAsync
               entity="client"
               displayLabels={['name']}
               searchFields="name"
               onSelect={(client) => {
-                form.setFieldsValue({ client: client._id });
+                // Handle both object and primitive values
+                const clientValue = typeof client === 'object' && client !== null ? client._id : client;
+                form.setFieldsValue({ client: clientValue });
               }}
               outputValue="_id"
               withRedirect

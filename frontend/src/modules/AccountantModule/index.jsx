@@ -447,3 +447,5 @@ function AccountantModule() {
     )
   };
 }
+
+export default AccountantModule;

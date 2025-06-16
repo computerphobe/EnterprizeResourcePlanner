@@ -40,6 +40,7 @@ const CurrentOrders = lazy(() => import('@/pages/delivery/CurrentOrders'));
 const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmation'));
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
+const SystemHistory = lazy(() => import('@/pages/History'));
 const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 const FinancialReports = lazy(() => import('@/pages/FinancialReports'));
@@ -159,14 +160,21 @@ export const routes = [
       <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
         <ExpensesPage />
       </ProtectedRoute>
-    ),
-  },
+    ),  },
   // ✅ Updated route path for financial reports
   {
     path: '/reports',
     element: (
       <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
         <FinancialReports />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/system-history',
+    element: (
+      <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
+        <SystemHistory />
       </ProtectedRoute>
     ),
   },

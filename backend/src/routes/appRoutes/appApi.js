@@ -9,7 +9,7 @@ const deliveryController = require('@/controllers/appControllers/deliveryControl
 const orderController = require('@/controllers/appControllers/orderController');
 const ledgerController = require('@/controllers/appControllers/ledgerController');
 const expenseController = require('@/controllers/appControllers/expenseController');
-
+const historyController = require('@/controllers/appControllers/historyController');
 // Import auth and role middlewares
 const authenticateToken = require('@/middleware/authMiddleware');
 const roleMiddleware = require('@/middleware/roleMiddleware');
@@ -32,13 +32,11 @@ const routerApp = (entity, controller) => {
   if (entity === 'invoice' || entity === 'quote' || entity === 'payment') {
     router.route(`/${entity}/mail`).post(catchErrors(controller['mail']));
   }
-
   if (entity === 'quote') {
     router.route(`/${entity}/convert/:id`).get(catchErrors(controller['convert']));
-  }
-
-  if (entity === 'returns') {
+  }  if (entity === 'returns') {
     router.route(`/${entity}/markAsUsed`).post(catchErrors(controller['markAsUsed']));
+    // collect route is now handled as a simple route above
   }
 
   if (entity === 'purchases') {
@@ -75,12 +73,51 @@ router.get(
   catchErrors(ledgerController.getLedgerSummary)
 );
 
+// --- History Routes ---
+router.get(
+  '/history',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(historyController.getHistory)
+);
+
+router.get(
+  '/history/filters',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'accountant']),
+  catchErrors(historyController.getHistoryFilters)
+);
+
 // --- Deliverer Dashboard Routes ---
 router.get(
   '/order/current',
   authenticateToken,
   roleMiddleware(['deliverer']),
   catchErrors(orderController.delivererOrders)
+);
+
+// Order-based pickup endpoint for deliverers
+router.post(
+  '/order/:orderId/mark-pickup',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(orderController.markOrderAsPickup)
+);
+
+// Order-based delivery confirmation endpoint for deliverers
+router.post(
+  '/order/:orderId/mark-delivered',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(orderController.markOrderAsDelivered)
+);
+
+// Get delivered orders history for deliverer
+router.get(
+  '/order/delivered-history',
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(orderController.getDeliveredOrdersHistory)
 );
 
 router.route('/deliveries/pending-delivery')
@@ -115,6 +152,13 @@ router.route('/order/returns/available/:inventoryItemId')
     roleMiddleware(['owner', 'admin']), 
     catchErrors(orderController.getAvailableReturnedItems)
   );
+
+router.post(
+  '/order/:orderId/pickup', 
+  authenticateToken,
+  roleMiddleware(['deliverer']),
+  catchErrors(deliveryController.confirmPickup)
+);
 
 // Substitute order item with returned item
 router.route('/order/:orderId/substitute')
@@ -176,6 +220,106 @@ router.use(
   roleMiddleware(['owner', 'admin', 'accountant']),
   financialReportsRoutes
 );
+
+// --- RETURNS COLLECTION ROUTE ---
+router.post('/returns/collect', authenticateToken, roleMiddleware(['deliverer', 'admin', 'owner']), async (req, res) => {
+  try {
+    const Returns = require('@/models/appModels/Returns');
+    const mongoose = require('mongoose');
+    
+    const {
+      orderId,
+      returnType,
+      doctorId,
+      doctorName,
+      hospitalName,
+      items,
+      photo,
+      customerSignature,
+      customerName,
+      notes,
+      collectedBy,
+      collectionDate
+    } = req.body;
+
+    // Validate required fields
+    if (!orderId || !items || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID and return items are required'
+      });
+    }
+
+    if (!photo || !customerSignature || !customerName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Photo, customer signature, and customer name are required'
+      });
+    }
+
+    // Start transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const createdReturns = [];
+
+      // Create return entries for each item
+      for (const item of items) {
+        const returnEntry = new Returns({
+          originalItemId: item.originalItemId,
+          returnedQuantity: item.returnedQuantity,
+          reason: item.reason,
+          status: 'Available for reuse',
+          returnType: returnType || 'doctor',
+          returnOrder: orderId,
+          doctorId: doctorId,
+          doctorName: doctorName,
+          hospitalName: hospitalName,
+          createdBy: collectedBy,
+          collectionMetadata: {
+            photo: photo,
+            customerSignature: customerSignature,
+            customerName: customerName,
+            notes: notes,
+            collectedBy: collectedBy,
+            collectionDate: collectionDate ? new Date(collectionDate) : new Date()
+          }
+        });
+
+        await returnEntry.save({ session });
+        createdReturns.push(returnEntry);
+      }
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(201).json({
+        success: true,
+        message: `Successfully collected ${createdReturns.length} return items from order ${orderId}`,
+        result: {
+          orderId,
+          returnsCreated: createdReturns.length,
+          returnIds: createdReturns.map(r => r._id)
+        }
+      });
+
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Error in return collection:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error processing return collection',
+      error: error.message
+    });
+  }
+});
 
 // --- Register entity-based dynamic routes ---
 routesList.forEach(({ entity, controllerName }) => {

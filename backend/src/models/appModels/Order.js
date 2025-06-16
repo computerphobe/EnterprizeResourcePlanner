@@ -30,11 +30,10 @@ const orderSchema = new mongoose.Schema({
         ref: 'Admin'
       }
     }]
-  }],
-  totalAmount: Number,
+  }],  totalAmount: Number,
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'cancelled'],
+    enum: ['pending', 'processing', 'picked_up', 'completed', 'cancelled'],
     default: 'pending'
   },
   orderType: {
@@ -66,6 +65,53 @@ const orderSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },  // NEW: Delivery tracking timestamps
+  pickedUpAt: {
+    type: Date,
+    default: null
+  },
+  deliveredAt: {
+    type: Date,
+    default: null
+  },
+  // NEW: Pickup verification
+  pickupVerification: {
+    photo: {
+      type: String, // URL to pickup photo
+      default: null
+    },
+    location: {
+      latitude: Number,
+      longitude: Number,
+      address: String
+    },
+    timestamp: {
+      type: Date,
+      default: null
+    },
+    notes: String
+  },
+  // NEW: Delivery verification
+  deliveryVerification: {
+    photo: {
+      type: String, // URL to delivery photo
+      default: null
+    },
+    location: {
+      latitude: Number,
+      longitude: Number,
+      address: String
+    },
+    timestamp: {
+      type: Date,
+      default: null
+    },
+    customerSignature: {
+      type: String, // Base64 encoded signature or URL
+      default: null
+    },
+    customerName: String,
+    notes: String
   },
   // NEW: Track if any items have been substituted
   hasSubstitutions: {

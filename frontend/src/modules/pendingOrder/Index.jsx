@@ -50,7 +50,6 @@ const PendingOrders = () => {
     
     navigate(url);
   };
-
   const columns = [
     {
       title: 'Order ID',
@@ -78,6 +77,27 @@ const PendingOrders = () => {
       key: 'hospital'
     },
     {
+      title: 'Items Info',
+      key: 'itemsInfo',
+      render: (_, record) => {
+        const returnInfo = record.returnInfo;
+        if (!returnInfo || !returnInfo.hasReturns) {
+          return <span>{returnInfo?.totalOriginalQuantity || 0} items</span>;
+        }
+        return (
+          <div>
+            <div>Total: {returnInfo.totalOriginalQuantity}</div>
+            <div style={{ color: '#f50', fontSize: '12px' }}>
+              Returned: {returnInfo.totalReturnedQuantity}
+            </div>
+            <div style={{ color: '#52c41a', fontSize: '12px' }}>
+              Billable: {returnInfo.totalUsedQuantity}
+            </div>
+          </div>
+        );
+      }
+    },
+    {
       title: 'Date',
       dataIndex: 'createdAt',
       key: 'date',
@@ -87,7 +107,16 @@ const PendingOrders = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => <Tag color="blue">{status.toUpperCase()}</Tag>
+      render: (status, record) => (
+        <div>
+          <Tag color="blue">{status.toUpperCase()}</Tag>
+          {record.returnInfo?.hasReturns && (
+            <Tag color="orange" style={{ marginTop: 4 }}>
+              Has Returns
+            </Tag>
+          )}
+        </div>
+      )
     },
     {
       title: 'Action',

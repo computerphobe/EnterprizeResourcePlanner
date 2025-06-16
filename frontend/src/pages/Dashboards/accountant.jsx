@@ -9,9 +9,9 @@ import useOnFetch from '@/hooks/useOnFetch';
 import { selectMoneyFormat } from '@/redux/settings/selectors';
 import { useSelector } from 'react-redux';
 // Import directly from the file to avoid path resolution issues
-import AccountantModule from '../../modules/AccountantModule';
+import AccountantModule from '@/modules/AccountantModule/';
 
-export default function AccountantDashboard() {
+const AccountantDashboard = () => {
   // Option to use full module instead of the simplified dashboard
   const useFullModule = true;
   
@@ -203,3 +203,5 @@ export default function AccountantDashboard() {
     </div>
   );
 }
+
+export default AccountantDashboard;

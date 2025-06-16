@@ -34,6 +34,7 @@ import {
   OrderedListOutlined,
   QuestionCircleFilled,
   LinkedinFilled,
+  HistoryOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -142,11 +143,15 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'purchase',
           label: <Link to={'/purchase'}>{translate('purchases')}</Link>,
           icon: <ShoppingCartOutlined />
-        },
-        {
+        },        {
           key: 'Orders',
           label: <Link to={'/order'}>{translate('order')}</Link>,
           icon: <OrderedListOutlined />
+        },
+        {
+          key: 'history',
+          label: <Link to={'/system-history'}>{translate('System History')}</Link>,
+          icon: <HistoryOutlined />
         },
       ],
       doctor: [
@@ -253,11 +258,15 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'reports',
           icon: <ReconciliationOutlined />,
           label: <Link to={'/reports'}>{translate('financial_reports')}</Link>,
-        },
-        {
+        },        {
           key: 'pendingOrders',
           icon : <QuestionCircleFilled />,
           label: <Link to={'/pending'}>{translate('Pending Invoices')}</Link>
+        },
+        {
+          key: 'history',
+          label: <Link to={'/system-history'}>{translate('System History')}</Link>,
+          icon: <HistoryOutlined />
         },
       ],
       // Default role (if role not found)

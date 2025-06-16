@@ -16,23 +16,42 @@ import {
   Descriptions, 
   Divider, 
   Tooltip,
-  List
+  List,
+  Input,
+  Upload,
+  Form,
+  Space
 } from 'antd';
 import { 
   EyeOutlined, 
   SwapOutlined, 
   InfoCircleOutlined,
-  CheckCircleOutlined 
+  CheckCircleOutlined,
+  CameraOutlined,
+  EnvironmentOutlined,
+  EditOutlined
 } from '@ant-design/icons';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
-const CurrentOrders = () => {
-  const [orders, setOrders] = useState([]);
+const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderForAction, setSelectedOrderForAction] = useState(null);
   const [orderDetailsVisible, setOrderDetailsVisible] = useState(false);
+  
+  // Verification modal states
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
+  const [verificationType, setVerificationType] = useState(null); // 'pickup' or 'delivery'
+  const [verificationForm] = Form.useForm();
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [customerSignature, setCustomerSignature] = useState(null);
+  const [customerName, setCustomerName] = useState('');
+  const [notes, setNotes] = useState('');
+  
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
@@ -52,11 +71,15 @@ const CurrentOrders = () => {
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Failed to fetch current orders');
-        }
-
-        const data = await response.json();
+        }        const data = await response.json();
 
         if (data.success) {
+          console.log('🔍 Fetched orders:', data.result);
+          console.log('🔍 Order statuses:', data.result.map(order => ({ 
+            id: order._id, 
+            status: order.status,
+            orderNumber: order.orderNumber 
+          })));
           setOrders(data.result || []);
         } else {
           throw new Error(data.message || 'Failed to fetch current orders');
@@ -69,70 +92,143 @@ const CurrentOrders = () => {
     };
 
     fetchOrders();
-  }, [token]);
-
-  const handlePickup = async (id) => {
-    setActionLoading(id);
-    try {
-      const response = await fetch(`/api/deliveries/${id}/pickup`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        message.success('Marked as picked up!');
-        setOrders((prev) =>
-          prev.map((order) => (order._id === id ? { ...order, status: 'picked_up' } : order))
-        );
-      } else {
-        throw new Error(data.message || 'Failed to confirm pickup.');
-      }
-    } catch (err) {
-      message.error(err.message || 'Error marking as picked up');
-    } finally {
-      setActionLoading(null);
-    }
+  }, [token]);  const handlePickup = async (id) => {
+    // Open verification modal instead of direct pickup
+    setSelectedOrderForAction(orders.find(order => order._id === id));
+    setVerificationType('pickup');
+    setVerificationModalVisible(true);
   };
 
   const handleDeliver = async (id) => {
-    setActionLoading(id);
-    try {
-      const response = await fetch(`/api/deliveries/${id}/confirm`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        message.success('Marked as delivered!');
-        setOrders((prev) => prev.filter((order) => order._id !== id));
-      } else {
-        throw new Error(data.message || 'Failed to confirm delivery.');
-      }
-    } catch (err) {
-      message.error(err.message || 'Error marking as delivered');
-    } finally {
-      setActionLoading(null);
-    }  };
+    // Open verification modal instead of direct delivery
+    setSelectedOrderForAction(orders.find(order => order._id === id));
+    setVerificationType('delivery');
+    setVerificationModalVisible(true);
+  };
 
   // Open order details modal
   const openOrderDetails = (order) => {
     setSelectedOrder(order);
     setOrderDetailsVisible(true);
   };
-
   // Close order details modal
   const closeOrderDetails = () => {
     setSelectedOrder(null);
     setOrderDetailsVisible(false);
   };
+  // Close verification modal
+  const closeVerificationModal = () => {
+    setVerificationModalVisible(false);
+    setSelectedOrderForAction(null);
+    setVerificationType(null);
+    setCapturedPhoto(null);
+    setCustomerSignature(null);
+    setCustomerName('');
+    setNotes('');
+    setCurrentLocation('');
+    verificationForm.resetFields();
+  };
 
+  // Handle photo capture for verification
+  const handlePhotoCapture = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCapturedPhoto(e.target.result);
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent automatic upload
+  };
+
+  // Handle signature capture for delivery verification
+  const handleSignatureCapture = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCustomerSignature(e.target.result);
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent automatic upload
+  };
+
+  // Handle verification form submission
+  const handleVerificationSubmit = async (values) => {
+    if (!capturedPhoto) {
+      message.error('Please capture a photo for verification');
+      return;
+    }
+
+    if (verificationType === 'delivery') {
+      if (!customerSignature) {
+        message.error('Please capture customer signature for delivery verification');
+        return;
+      }
+      if (!values.customerName) {
+        message.error('Please enter customer name for delivery verification');
+        return;
+      }
+    }
+
+    try {
+      setActionLoading(selectedOrderForAction._id);
+
+      const requestData = {
+        photo: capturedPhoto,
+        notes: values.notes || '',
+        location: currentLocation ? { address: currentLocation } : null
+      };
+
+      // Add delivery-specific fields
+      if (verificationType === 'delivery') {
+        requestData.customerSignature = customerSignature;
+        requestData.customerName = values.customerName;
+      }
+
+      const endpoint = verificationType === 'pickup' 
+        ? `/api/order/${selectedOrderForAction._id}/pickup`
+        : `/api/order/${selectedOrderForAction._id}/deliver`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to ${verificationType} order`);
+      }
+
+      if (data.success) {
+        message.success(data.message || `Order ${verificationType} completed successfully`);
+        
+        // Update the order in the local state
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === selectedOrderForAction._id 
+              ? { ...order, status: data.result.status }
+              : order
+          )
+        );
+
+        // Close modal and reset
+        closeVerificationModal();
+      } else {
+        throw new Error(data.message || `Failed to ${verificationType} order`);
+      }
+    } catch (error) {
+      console.error(`Error during ${verificationType}:`, error);
+      message.error(error.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
   // Status tag colors for better UX
   const statusColors = {
     pending: 'gold',
+    processing: 'orange', 
     picked_up: 'blue',
     completed: 'green',
     cancelled: 'red',
@@ -207,12 +303,13 @@ const CurrentOrders = () => {
           View Details
         </Button>
       ),
-    },
-    {
+    },    {
       title: 'Action',
       key: 'action',
       render: (_, record) => {
-        if (record.status === 'pending') {
+        console.log('🔍 Rendering action for order:', { id: record._id, status: record.status });
+        
+        if (record.status === 'pending' || record.status === 'processing') {
           return (
             <Button
               type="default"
@@ -235,7 +332,11 @@ const CurrentOrders = () => {
             </Button>
           );
         }
-        return '-';
+        return (
+          <span style={{ color: '#999' }}>
+            No action available (Status: {record.status})
+          </span>
+        );
       },
     },
   ];
@@ -459,6 +560,224 @@ const CurrentOrders = () => {
                 />
               </Card>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Verification Modal */}
+      <Modal
+        title={`Order ${verificationType === 'pickup' ? 'Pickup' : 'Delivery'} Verification`}
+        open={verificationModalVisible}
+        onCancel={closeVerificationModal}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={verificationForm}
+          layout="vertical"
+          onFinish={handleVerificationSubmit}
+          initialValues={{
+            notes: '',
+            customerName: '',
+          }}
+        >
+          <Form.Item
+            label="Verification Photo"
+            required
+            tooltip="Capture a clear photo as proof of {verificationType === 'pickup' ? 'pickup' : 'delivery'}."
+          >
+            <Upload
+              accept="image/*"
+              showUploadList={false}
+              beforeUpload={handlePhotoCapture}
+              onRemove={() => setCapturedPhoto(null)}
+            >
+              <Button icon={<CameraOutlined />}>
+                {capturedPhoto ? 'Retake Photo' : 'Capture Photo'}
+              </Button>
+            </Upload>
+            {capturedPhoto && (
+              <div style={{ marginTop: 8 }}>
+                <img
+                  src={capturedPhoto}
+                  alt="Verification"
+                  style={{ width: '100%', borderRadius: 8 }}
+                />
+              </div>
+            )}
+          </Form.Item>
+
+          {verificationType === 'delivery' && (
+            <>
+              <Form.Item
+                label="Customer Name"
+                name="customerName"
+                rules={[{ required: true, message: 'Customer name is required' }]}
+              >
+                <Input placeholder="Enter customer name" />
+              </Form.Item>
+
+              <Form.Item
+                label="Customer Signature"
+                required
+                tooltip="Capture the customer's signature for delivery verification."
+              >
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={handleSignatureCapture}
+                  onRemove={() => setCustomerSignature(null)}
+                >
+                  <Button icon={<CameraOutlined />}>
+                    {customerSignature ? 'Retake Signature' : 'Capture Signature'}
+                  </Button>
+                </Upload>
+                {customerSignature && (
+                  <div style={{ marginTop: 8 }}>
+                    <img
+                      src={customerSignature}
+                      alt="Signature"
+                      style={{ width: '100%', borderRadius: 8 }}
+                    />
+                  </div>
+                )}
+              </Form.Item>
+            </>
+          )}
+
+          <Form.Item label="Notes" name="notes">
+            <TextArea rows={4} placeholder="Enter any additional notes" />
+          </Form.Item>
+
+          <Form.Item label="Current Location">
+            <Input
+              value={currentLocation}
+              onChange={(e) => setCurrentLocation(e.target.value)}
+              placeholder="Enter current location (optional)"
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={actionLoading}>
+              Submit Verification
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Photo Verification Modal */}
+      <Modal
+        title={
+          <div>
+            <CameraOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+            {verificationType === 'pickup' ? 'Pickup Verification' : 'Delivery Verification'}
+          </div>
+        }
+        open={verificationModalVisible}
+        onCancel={closeVerificationModal}
+        footer={[
+          <Button key="cancel" onClick={closeVerificationModal}>
+            Cancel
+          </Button>,
+          <Button 
+            key="submit" 
+            type="primary" 
+            onClick={handleVerificationSubmit}
+            loading={actionLoading === selectedOrderForAction?._id}
+          >
+            {verificationType === 'pickup' ? 'Confirm Pickup' : 'Confirm Delivery'}
+          </Button>
+        ]}
+        width={600}
+      >
+        {selectedOrderForAction && (
+          <div>
+            <Alert
+              message={`${verificationType === 'pickup' ? 'Pickup' : 'Delivery'} Verification Required`}
+              description={`Please provide photo verification ${verificationType === 'delivery' ? 'and customer signature ' : ''}for Order ${selectedOrderForAction.orderNumber}`}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+
+            <Form form={verificationForm} layout="vertical">
+              {/* Photo Upload */}
+              <Form.Item
+                label="Photo Verification"
+                required
+                help="Take a photo to verify the action"
+              >
+                <Upload
+                  beforeUpload={handlePhotoCapture}
+                  showUploadList={false}
+                  accept="image/*"
+                >
+                  <Button icon={<CameraOutlined />} size="large" block>
+                    {capturedPhoto ? 'Retake Photo' : 'Capture Photo'}
+                  </Button>
+                </Upload>
+                {capturedPhoto && (
+                  <div style={{ marginTop: 8, textAlign: 'center' }}>
+                    <img 
+                      src={capturedPhoto} 
+                      alt="Captured" 
+                      style={{ maxWidth: '100%', maxHeight: 200, border: '1px solid #d9d9d9' }}
+                    />
+                  </div>
+                )}
+              </Form.Item>
+
+              {/* Customer Details for Delivery */}
+              {verificationType === 'delivery' && (
+                <>
+                  <Form.Item
+                    label="Customer Name"
+                    required
+                  >
+                    <Input
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Enter customer name"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Customer Signature"
+                    required
+                    help="Customer signature for delivery confirmation"
+                  >
+                    <div
+                      style={{
+                        border: '2px dashed #d9d9d9',
+                        borderRadius: 6,
+                        padding: 16,
+                        textAlign: 'center',
+                        backgroundColor: '#fafafa'
+                      }}
+                    >
+                      <EditOutlined style={{ fontSize: 24, color: '#bfbfbf' }} />
+                      <div style={{ marginTop: 8 }}>
+                        <Input
+                          placeholder="Customer signature (text or draw)"
+                          value={customerSignature}
+                          onChange={(e) => setCustomerSignature(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </Form.Item>
+                </>
+              )}
+
+              {/* Notes */}
+              <Form.Item label="Notes (Optional)">
+                <TextArea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any additional notes..."
+                  rows={3}
+                />
+              </Form.Item>
+            </Form>
           </div>
         )}
       </Modal>

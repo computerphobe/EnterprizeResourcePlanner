@@ -12,7 +12,7 @@ const delivererOrders = async (req, res) => {
     const delivererId = req.user.id;
     console.log('Fetching current deliveries for deliverer:', delivererId);
 
-    const orders = await Order.find({ delivererId, status: { $in: ['pending', 'processing'] } })
+    const orders = await Order.find({ delivererId, status: { $in: ['pending', 'processing', 'picked_up'] } })
       .populate('doctorId', 'name role email')
       .populate('delivererId', 'name role email')
       .populate({
@@ -128,11 +128,51 @@ const getPendingInvoices = async (req, res) => {
     })
       .populate('doctorId', 'name')
       .populate('delivererId', 'name')
+      .populate('items.inventoryItem', 'itemName')
       .sort({ createdAt: -1 });
+
+    // Add return information to each order
+    const ordersWithReturnInfo = await Promise.all(orders.map(async (order) => {
+      let totalOriginalQuantity = 0;
+      let totalReturnedQuantity = 0;
+      let itemsWithReturns = 0;
+
+      for (const item of order.items) {
+        totalOriginalQuantity += item.quantity;
+
+        // Find returns for this item in this order
+        const returnedItems = await Returns.find({
+          originalItemId: item.inventoryItem._id,
+          returnOrder: order._id,
+          status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
+        });
+
+        const itemReturnedQuantity = returnedItems.reduce((sum, returnItem) => {
+          return sum + (returnItem.returnedQuantity || 0);
+        }, 0);
+
+        if (itemReturnedQuantity > 0) {
+          itemsWithReturns++;
+          totalReturnedQuantity += itemReturnedQuantity;
+        }
+      }
+
+      const orderObj = order.toObject();
+      orderObj.returnInfo = {
+        hasReturns: totalReturnedQuantity > 0,
+        totalOriginalQuantity,
+        totalReturnedQuantity,
+        totalUsedQuantity: totalOriginalQuantity - totalReturnedQuantity,
+        itemsWithReturns,
+        totalItems: order.items.length
+      };
+
+      return orderObj;
+    }));
 
     return res.status(200).json({
       success: true,
-      result: orders,
+      result: ordersWithReturnInfo,
     });
   } catch (err) {
     console.error('❌ Error fetching pending invoicing orders:', err.message);
@@ -207,7 +247,7 @@ const getOrderWithInventoryDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Get updated items with current inventory prices and available returns
+    // Get updated items with current inventory prices and calculate used quantities
     const updatedItems = await Promise.all(order.items.map(async (item) => {
       const inventoryItem = await Inventory.findById(item.inventoryItem._id);
       
@@ -217,10 +257,28 @@ const getOrderWithInventoryDetails = async (req, res) => {
         status: 'Available for reuse'
       }).populate('originalItemId', 'itemName category price');
 
+      // Calculate total returned quantity for this order item
+      const returnedItems = await Returns.find({
+        originalItemId: item.inventoryItem._id,
+        returnOrder: orderId,
+        status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
+      });
+
+      const totalReturnedQuantity = returnedItems.reduce((sum, returnItem) => {
+        return sum + (returnItem.returnedQuantity || 0);
+      }, 0);
+
+      // Calculate used quantity (original quantity - returned quantity)
+      const usedQuantity = Math.max(0, item.quantity - totalReturnedQuantity);
+
+      console.log(`Order ${orderId}, Item ${item.inventoryItem.itemName}: Original: ${item.quantity}, Returned: ${totalReturnedQuantity}, Used: ${usedQuantity}`);
+
       return {
         _id: item._id,
         inventoryItem: item.inventoryItem,
-        quantity: item.quantity,
+        quantity: usedQuantity, // This is now the "used" quantity for invoice purposes
+        originalQuantity: item.quantity, // Keep original for reference
+        returnedQuantity: totalReturnedQuantity, // Track returned amount
         price: inventoryItem ? inventoryItem.price : item.price,
         availableReturns: availableReturns.map(ret => ({
           _id: ret._id,
@@ -229,14 +287,60 @@ const getOrderWithInventoryDetails = async (req, res) => {
           returnDate: ret.returnDate || ret.createdAt
         }))
       };
-    }));
+    }));    // Filter out items where used quantity is 0 (completely returned)
+    const itemsWithUsedQuantity = updatedItems.filter(item => item.quantity > 0);
+
+    // Find or create a client for this doctor/hospital
+    const Client = mongoose.model('Client');
+    let client = null;
+
+    if (order.doctorName && order.hospitalName) {
+      // Try to find existing client by name and hospital
+      client = await Client.findOne({
+        name: order.doctorName,
+        address: order.hospitalName,
+        removed: false
+      });
+
+      // If no client found, create one
+      if (!client) {
+        try {
+          client = await Client.create({
+            name: order.doctorName,
+            address: order.hospitalName,
+            phone: '', // Could be enhanced with doctor contact info
+            email: '', // Could be enhanced with doctor contact info
+            enabled: true,
+            createdBy: order.createdBy || null
+          });
+          console.log(`Created new client for doctor: ${order.doctorName} at ${order.hospitalName}`);
+        } catch (clientError) {
+          console.warn('Failed to create client:', clientError.message);
+          // Continue without client - the invoice form will require manual selection
+        }
+      }
+    }
 
     return res.json({
       success: true,
       order: {
         ...order.toObject(),
-        items: updatedItems,
+        items: itemsWithUsedQuantity,
+        originalItemCount: updatedItems.length, // Track how many items before filtering
+        filteredItemCount: updatedItems.length - itemsWithUsedQuantity.length, // How many were filtered out
+        hasReturns: updatedItems.some(item => item.returnedQuantity > 0),
       },
+      // Add client information for invoice creation
+      doctorName: order.doctorName,
+      hospitalName: order.hospitalName,
+      client: client, // The actual client record for the invoice
+      clientInfo: {
+        name: order.doctorName || 'Unknown Doctor',
+        address: order.hospitalName || 'Unknown Hospital',
+        phone: client?.phone || '',
+        email: client?.email || '',
+        type: 'doctor'
+      }
     });
 
   } catch (error) {
@@ -466,6 +570,236 @@ const getAvailableReturnsForItem = async (req, res) => {
   return getAvailableReturnedItems(req, res);
 };
 
+// NEW: Mark order as picked up by deliverer with photo verification
+const markOrderAsPickup = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { photo, notes, location } = req.body;
+    const delivererId = req.user.id;
+    
+    console.log('Order pickup confirmation for:', { orderId, delivererId });
+    
+    // Validate required photo
+    if (!photo) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Photo verification is required for pickup confirmation' 
+      });
+    }
+    
+    // Validate base64 photo format
+    if (!photo.startsWith('data:image/')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid photo format. Please provide a valid image.' 
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    
+    // Verify the order is assigned to this deliverer
+    if (order.delivererId?.toString() !== delivererId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'This order is not assigned to you' 
+      });
+    }
+    
+    // Verify order is in correct status for pickup
+    if (order.status !== 'pending' && order.status !== 'processing') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order is not available for pickup' 
+      });
+    }
+    
+    // Update order with pickup verification
+    order.status = 'picked_up';
+    order.pickedUpAt = new Date();
+    order.pickupVerification = {
+      photo: photo,
+      timestamp: new Date(),
+      notes: notes || '',
+      location: location || null
+    };
+    
+    await order.save();
+    
+    console.log('Order marked as picked up with verification:', orderId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Order marked as picked up successfully with photo verification',
+      result: order 
+    });
+    
+  } catch (error) {
+    console.error('Error marking order as picked up:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+// NEW: Mark order as delivered by deliverer with photo and signature verification
+const markOrderAsDelivered = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { photo, customerSignature, customerName, notes, location } = req.body;
+    const delivererId = req.user.id;
+    
+    console.log('Order delivery confirmation for:', { orderId, delivererId });
+    
+    // Validate required verification data
+    if (!photo) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Photo verification is required for delivery confirmation' 
+      });
+    }
+    
+    if (!customerSignature || !customerName) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Customer signature and name are required for delivery verification' 
+      });
+    }
+    
+    // Validate base64 photo and signature format
+    if (!photo.startsWith('data:image/')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid photo format. Please provide a valid image.' 
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    
+    // Verify the order is assigned to this deliverer
+    if (order.delivererId?.toString() !== delivererId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'This order is not assigned to you' 
+      });
+    }
+    
+    // Verify the order was picked up first
+    if (order.status !== 'picked_up') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order must be picked up before it can be delivered' 
+      });
+    }
+    
+    // Update order with delivery verification
+    order.status = 'completed';
+    order.deliveredAt = new Date();
+    order.deliveryVerification = {
+      photo: photo, // Base64 encoded photo
+      timestamp: new Date(),
+      customerSignature: customerSignature, // Base64 encoded signature
+      customerName: customerName,
+      notes: notes || '',
+      location: location || null
+    };
+    
+    await order.save();
+    
+    console.log('Order marked as delivered with verification:', orderId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Order marked as delivered successfully with verification',
+      result: order 
+    });
+    
+  } catch (error) {
+    console.error('Error marking order as delivered:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+// NEW: Get delivered orders history for deliverer
+const getDeliveredOrdersHistory = async (req, res) => {
+  try {
+    const delivererId = req.user.id;
+    console.log('Fetching delivered orders history for deliverer:', delivererId);
+
+    const deliveredOrders = await Order.find({ 
+      delivererId, 
+      status: 'completed',
+      deliveredAt: { $exists: true }
+    })
+      .populate('doctorId', 'name role email')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber'
+      })
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'itemName category batchNumber expiryDate'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name')
+      .sort({ deliveredAt: -1 });
+
+    console.log('Delivered orders found:', deliveredOrders.length);
+    
+    // Add substitution summary for each delivered order
+    const ordersWithSubstitutionDetails = deliveredOrders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Add substitution counts and details
+      orderObj.substitutionSummary = {
+        totalSubstitutions: 0,
+        itemsWithSubstitutions: 0,
+        details: []
+      };
+
+      orderObj.items.forEach(item => {
+        if (item.substitutions && item.substitutions.length > 0) {
+          orderObj.substitutionSummary.itemsWithSubstitutions++;
+          orderObj.substitutionSummary.totalSubstitutions += item.substitutions.length;
+          
+          item.substitutions.forEach(sub => {
+            orderObj.substitutionSummary.details.push({
+              originalItem: item.inventoryItem.itemName,
+              quantitySubstituted: sub.quantitySubstituted,
+              substitutedAt: sub.substitutedAt,
+              substitutedBy: sub.substitutedBy?.name || 'Unknown',
+              returnedItem: sub.returnId?.originalItemId?.itemName || 'Unknown Item'
+            });
+          });
+        }
+      });
+
+      return orderObj;
+    });
+
+    res.json({ success: true, result: ordersWithSubstitutionDetails });
+  } catch (error) {
+    console.error('Error fetching delivered orders history:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   assignDeliverer,
   delivererOrders,
@@ -477,4 +811,7 @@ module.exports = {
   getAvailableReturnedItems,
   substituteOrderItem,
   getAvailableReturnsForItem,
+  markOrderAsPickup,
+  markOrderAsDelivered,
+  getDeliveredOrdersHistory,
 };

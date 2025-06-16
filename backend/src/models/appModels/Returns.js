@@ -55,19 +55,28 @@ const returnsSchema = new mongoose.Schema({
   returnOrder: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
-  },
-  // Doctor information (if return type is doctor)
+  },  // Doctor information (if return type is doctor)
   doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
-    required: function() { return this.returnType === 'doctor'; }
+    ref: 'Admin'
   },
   doctorName: String,
-  hospitalName: String,
-  // Who created this return
+  hospitalName: String,  // Who created this return
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin'
+  },
+  // NEW: Collection metadata for deliverer-collected returns
+  collectionMetadata: {
+    photo: String, // Base64 encoded photo of returned items
+    customerSignature: String, // Base64 encoded customer signature
+    customerName: String,
+    notes: String,
+    collectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin' // The deliverer who collected the return
+    },
+    collectionDate: Date
   },
   isDeleted: {
     type: Boolean,
