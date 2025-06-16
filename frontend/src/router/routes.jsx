@@ -51,7 +51,6 @@ const PickupConfirmation = lazy(() => import('@/pages/delivery/PickupConfirmatio
 const DeliveryConfirmation = lazy(() => import('@/pages/delivery/DeliveryConfirmation'));
 const History = lazy(() => import('@/pages/delivery/History'));
 
-<<<<<<< HEAD
 const HospitalOrders = lazy(() => import('@/pages/Hospital/orders'));
 const HospitalDelivery = lazy(() => import('@/pages/Hospital/delivery'));
 const HospitalHistory = lazy(() => import('@/pages/Hospital/history'));
@@ -64,9 +63,6 @@ const DoctorHistory = lazy(() => import('@/pages/Doctor/history'));
 const DoctorSalesBill = lazy(() => import('@/pages/Doctor/salesbill'));
 const DoctorReturns = lazy(() => import('@/pages/Doctor/returns'));
 
-=======
-// Export Routes
->>>>>>> cd25b00e54a1b3cd1deba66ac6e6a0e9e79f12e1
 export const routes = [
   // Public Routes
   { path: '/', element: <Dashboard /> },
@@ -208,7 +204,6 @@ export const routes = [
     ),
   },
 
-<<<<<<< HEAD
   {
     path: '/doctor',
     element: (
@@ -258,8 +253,5 @@ export const routes = [
     ),
   },
 
-=======
-  // 404 Catch-All
->>>>>>> cd25b00e54a1b3cd1deba66ac6e6a0e9e79f12e1
   { path: '*', element: <NotFound /> },
 ];
