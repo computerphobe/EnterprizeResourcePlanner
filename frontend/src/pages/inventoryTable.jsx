@@ -1,25 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Modal, Form, Input, InputNumber, message } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, InputNumber, Select, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { getinventory, createinventory, updateinventory, deleteinventory } from '@/modules/InventoryModule/service';
+import {
+  getinventory,
+  createinventory,
+  updateinventory,
+  deleteinventory,
+} from '@/modules/InventoryModule/service';
 
-export default function InventoryPage() {
+const { Option } = Select;
+
+export default function InventoryTable() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [editingItem, setEditingItem] = useState(null);
+  const [searchText, setSearchText] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     try {
-      // console.log('Fetching inventory data...');
       const result = await getinventory();
-      // console.log('API Response:', result);
-      // The service already handles the response structure
       setData(result);
     } catch (err) {
-      console.error('Error loading inventory:', err);
       message.error('Failed to load inventory: ' + (err.message || err));
       setData([]);
     }
@@ -32,6 +36,11 @@ export default function InventoryPage() {
 
   const handleCreate = async (values) => {
     try {
+      // ✅ Ensure gstRate is a number
+      if (values.gstRate) {
+        values.gstRate = Number(values.gstRate);
+      }
+
       if (editingItem) {
         await updateinventory(editingItem._id, values);
         message.success('Inventory updated successfully');
@@ -64,26 +73,23 @@ export default function InventoryPage() {
     setModalVisible(true);
   };
 
+  const filteredData = data.filter((item) =>
+    item.productCode?.toLowerCase().includes(searchText.toLowerCase())
+  );
+
   const columns = [
+    { title: 'Product Code', dataIndex: 'productCode', key: 'productCode' },
+    { title: 'Item Name', dataIndex: 'itemName', key: 'itemName' },
+    { title: 'Name Alias', dataIndex: 'nameAlias', key: 'nameAlias' },
+    { title: 'Material', dataIndex: 'material', key: 'material' },
+    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
+    { title: 'Category', dataIndex: 'category', key: 'category' },
+    { title: 'Price', dataIndex: 'price', key: 'price' },
     {
-      title: 'Item Name',
-      dataIndex: 'itemName',
-      key: 'itemName',
-    },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-    },
-    {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-    },
-    {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
+      title: 'GST Rate',
+      dataIndex: 'gstRate',
+      key: 'gstRate',
+      render: (rate) => (rate !== undefined ? `${rate}%` : 'N/A'),
     },
     {
       title: 'Actions',
@@ -98,8 +104,8 @@ export default function InventoryPage() {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: 16 }}>
+    <div style={{ padding: 24 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -109,14 +115,20 @@ export default function InventoryPage() {
             setModalVisible(true);
           }}
         >
-          Add Inventory
+          Add Product
         </Button>
+        <Input
+          placeholder="Search by Product Code"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 250 }}
+        />
       </div>
 
       <Table
         rowKey="_id"
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         loading={loading}
         pagination={{
           pageSize: 10,
@@ -126,7 +138,7 @@ export default function InventoryPage() {
       />
 
       <Modal
-        title={editingItem ? 'Edit Inventory' : 'Add Inventory'}
+        title={editingItem ? 'Edit Product' : 'Add Product'}
         open={modalVisible}
         onOk={() => form.submit()}
         onCancel={() => {
@@ -134,16 +146,34 @@ export default function InventoryPage() {
           form.resetFields();
           setEditingItem(null);
         }}
+        destroyOnHidden
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleCreate}
-        >
+        <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item
             name="itemName"
-            label="Item Name"
-            rules={[{ required: true, message: 'Please input item name!' }]}
+            label="Product Name"
+            rules={[{ required: true, message: 'Please input product name!' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="productCode"
+            label="Product Code"
+            rules={[{ required: true, message: 'Please input product code!' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="nameAlias"
+            label="Name Alias"
+            rules={[{ required: true, message: 'Please input name alias!' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="material"
+            label="Material"
+            rules={[{ required: true, message: 'Please input material!' }]}
           >
             <Input />
           </Form.Item>
@@ -167,6 +197,16 @@ export default function InventoryPage() {
             rules={[{ required: true, message: 'Please input price!' }]}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="gstRate"
+            label="GST Rate"
+            rules={[{ required: true, message: 'Please select GST rate!' }]}
+          >
+            <Select placeholder="Select GST rate">
+              <Option value={5}>5%</Option>
+              <Option value={12}>12%</Option>
+            </Select>
           </Form.Item>
         </Form>
       </Modal>
