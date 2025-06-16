@@ -13,8 +13,20 @@ const confirmPickup = async (req, res) => {
   }
 
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized: Missing user information' });
+    }
+
+    const delivererId = req.user.id;
+    const deliveryId = req.params.id;
+    const { returnItems } = req.body;
+
+    if (!isValidObjectId(deliveryId)) {
+      return res.status(400).json({ message: 'Invalid delivery ID' });
+    }
+
     const delivery = await Delivery.findOne({
-      _id: id,
+      _id: deliveryId,
       assignedTo: req.deliverer._id,
       status: 'pending',
     });
@@ -23,11 +35,17 @@ const confirmPickup = async (req, res) => {
       return res.status(404).json({ error: 'Delivery not found or unauthorized' });
     }
 
+    // Update delivery status and pickup time
     delivery.status = 'picked_up';
     delivery.pickupDetails = {
       pickupConfirmed: true,
       pickupTime: new Date(),
     };
+
+    // Save returnItems if provided and valid
+    if (returnItems && Array.isArray(returnItems)) {
+      delivery.returnItems = returnItems;
+    }
 
     await delivery.save();
     res.status(200).json({ message: 'Pickup confirmed', delivery });

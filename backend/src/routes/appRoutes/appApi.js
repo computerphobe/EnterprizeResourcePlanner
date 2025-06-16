@@ -154,6 +154,7 @@ router.patch(
   orderController.assignDeliverer
 );
 
+<<<<<<< HEAD
 // 🆕 Item Substitution Routes
 router.get(
   '/order/returns/available/:inventoryItemId',
@@ -331,6 +332,16 @@ router.post('/returns/collect', authenticateToken, roleMiddleware(['deliverer', 
 });
 
 // --- Register entity-based dynamic routes ---
+=======
+// 🏥 Hospital Order Routes
+router.route('/hospital/orders')
+  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.hospitalOrders));
+
+router.route('/hospital/orders/create')
+  .post(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.createHospitalOrder));
+
+// 🧠 Register all dynamic entity-based routes
+>>>>>>> final_changes
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);

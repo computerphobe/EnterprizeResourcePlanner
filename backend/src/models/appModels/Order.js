@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
@@ -137,3 +138,6 @@ orderSchema.pre('save', async function (next) {
 });
 
 module.exports = mongoose.model('Order', orderSchema);
+=======
+ 
+>>>>>>> final_changes

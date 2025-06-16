@@ -8,6 +8,11 @@ const deliveryController = require('../controllers/appControllers/deliveryContro
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
+// GET /api/deliveries/test – Test route
+router.get('/test', (req, res) => {
+  res.send('Delivery routes are working!');
+});
+
 // GET /api/deliveries/pickup – Deliveries ready for pickup
 router.get('/pickup', verifyDeliverer, async (req, res) => {
   try {
@@ -22,10 +27,56 @@ router.get('/pickup', verifyDeliverer, async (req, res) => {
   }
 });
 
-// POST /api/deliveries/:id/pickup – Confirm pickup
-router.post('/:id/pickup', verifyDeliverer, async (req, res) => {
+// PATCH /api/deliveries/:id/item-return – Update returnAmount for single item
+router.patch('/:id/item-return', verifyDeliverer, async (req, res) => {
   const { id } = req.params;
+  const { itemName, returnAmount } = req.body;
+
   if (!isValidObjectId(id)) {
+    return res.status(400).json({ error: 'Invalid delivery ID' });
+  }
+  if (!itemName || typeof returnAmount !== 'number' || returnAmount < 0) {
+    return res.status(400).json({ error: 'Invalid itemName or returnAmount' });
+  }
+
+  try {
+    const delivery = await Delivery.findOne({
+      _id: id,
+      assignedTo: req.deliverer._id,
+      status: 'pending',
+    });
+
+    if (!delivery) {
+      return res.status(404).json({ error: 'Delivery not found or unauthorized' });
+    }
+
+    let itemFound = false;
+    delivery.items = delivery.items.map(item => {
+      if (item.name === itemName) {
+        item.returnAmount = returnAmount;
+        itemFound = true;
+      }
+      return item;
+    });
+
+    if (!itemFound) {
+      return res.status(404).json({ error: 'Item not found in delivery' });
+    }
+
+    await delivery.save();
+    res.status(200).json({ message: 'Return amount updated successfully' });
+  } catch (err) {
+    console.error('Error updating return amount:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to update return amount', details: err.message });
+  }
+});
+
+// POST /api/deliveries/:id/pickup-confirm – Confirm pickup
+router.post('/:id/pickup-confirm', verifyDeliverer, async (req, res) => {
+  const { id } = req.params;
+  const { returnItems } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: 'Invalid delivery ID' });
   }
 
@@ -40,6 +91,24 @@ router.post('/:id/pickup', verifyDeliverer, async (req, res) => {
       return res.status(404).json({ error: 'Delivery not found or unauthorized' });
     }
 
+    console.log("🟡 Return items received:", returnItems);
+    console.log("🟡 Before update:", delivery.items.map(i => ({
+      id: i._id.toString(),
+      name: i.name,
+      returnAmount: i.returnAmount
+    })));
+
+    // Update returnAmount inside each item
+    if (Array.isArray(returnItems)) {
+      for (let item of delivery.items) {
+        const matched = returnItems.find(i => i.itemId === item._id.toString());
+        if (matched) {
+          item.returnAmount = matched.returnAmount;
+        }
+      }
+    }
+
+    // Mark as picked-up
     delivery.status = 'picked_up';
     delivery.pickupDetails = {
       pickupConfirmed: true,
@@ -48,9 +117,9 @@ router.post('/:id/pickup', verifyDeliverer, async (req, res) => {
 
     await delivery.save();
     res.status(200).json({ message: 'Pickup confirmed', delivery });
-  } catch (err) {
-    console.error('Pickup error:', err);
-    res.status(500).json({ error: 'Failed to confirm pickup' });
+  } catch (error) {
+    console.error('Error confirming pickup:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -107,13 +176,13 @@ router.post(
         deliveryConfirmed: true,
         deliveryTime: new Date()
       };
-      delivery.deliveryPhoto = req.file.path.replace(/\\/g, '/');
       delivery.deliveredAt = new Date();
+      delivery.deliveryPhoto = req.file.path.replace(/\\/g, '/');
 
       await delivery.save();
       res.status(200).json({ message: 'Delivery confirmed with photo', delivery });
-    } catch (err) {
-      console.error('Delivery confirmation error:', err);
+    } catch (error) {
+      console.error('Error confirming delivery:', error);
       res.status(500).json({ error: 'Failed to confirm delivery' });
     }
   }
@@ -166,7 +235,7 @@ router.get('/stats', verifyDeliverer, async (req, res) => {
   }
 });
 
-// ✅ NEW: GET /api/deliveries/dashboard-stats – Dashboard summary stats
+// NEW: GET /api/deliveries/dashboard-stats – Dashboard summary stats
 router.get('/dashboard-stats', verifyDeliverer, deliveryController.getDashboardStats);
 
 module.exports = router;

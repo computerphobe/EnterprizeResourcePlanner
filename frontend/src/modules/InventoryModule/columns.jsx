@@ -11,11 +11,6 @@ const columns = () => {
       key: 'itemName',
     },
     {
-      title: translate('SKU'),
-      dataIndex: 'sku', // ✅ Ensure SKU exists in API response
-      key: 'sku',
-    },
-    {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
@@ -29,7 +24,7 @@ const columns = () => {
       title: translate('Price'),
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `$${price}`, // ✅ Format price
+      render: (price) => `$${price}`,
     },
     {
       title: translate('Status'),

@@ -19,6 +19,10 @@ const AuthModule = ({ authContent, AUTH_TITLE, isForRegistre = false }) => {
           padding: isForRegistre ? '40px 30px 30px' : '100px 30px 30px',
           maxWidth: '440px',
           margin: '0 auto',
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '15px',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)'
         }}
       >
         <Col xs={{ span: 24 }} sm={{ span: 24 }} md={{ span: 0 }} span={0}>

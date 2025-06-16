@@ -7,8 +7,7 @@ import { useAppContext } from '@/context/appContext';
 import { selectAuth } from '@/redux/auth/selectors';
 
 import useLanguage from '@/locale/useLanguage';
-import logoIcon from '@/style/images/logo-icon.svg';
-import logoText from '@/style/images/logo-text.svg';
+import logoIcon from '@/dashboard-logo.svg';
 
 import useResponsive from '@/hooks/useResponsive';
 
@@ -32,9 +31,16 @@ import {
   ShoppingCartOutlined,
   LinuxOutlined,
   OrderedListOutlined,
+<<<<<<< HEAD
   QuestionCircleFilled,
   LinkedinFilled,
   HistoryOutlined,
+=======
+  CarOutlined,
+  HistoryOutlined,
+  FileTextOutlined,
+  RollbackOutlined,
+>>>>>>> final_changes
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -51,7 +57,6 @@ function Sidebar({ collapsible, isMobile = false }) {
   const { state: stateApp, appContextAction } = useAppContext();
   const { isNavMenuClose } = stateApp;
   const { navMenu } = appContextAction;
-  const [showLogoApp, setLogoApp] = useState(isNavMenuClose);
   const [currentPath, setCurrentPath] = useState(location.pathname.slice(1));
 
   const { current: currentUser } = useSelector(selectAuth);
@@ -158,34 +163,59 @@ function Sidebar({ collapsible, isMobile = false }) {
         {
           key: 'orders',
           icon: <ContainerOutlined />,
-          label: <Link to={'/orders'}>{translate('orders')}</Link>,
+          label: <Link to={'/doctor/orders'}>{translate('orders')}</Link>,
         },
         {
-          key: 'new-order',
-          icon: <FileSyncOutlined />,
-          label: <Link to={'/orders/new'}>{translate('new_order')}</Link>,
+          key: 'delivery',
+          icon: <CarOutlined />,
+          label: <Link to={'/doctor/delivery'}>{translate('delivery')}</Link>,
+        },
+        {
+          key: 'history',
+          icon: <HistoryOutlined />,
+          label: <Link to={'/doctor/history'}>{translate('history')}</Link>,
+        },
+        {
+          key: 'salesbill',
+          icon: <FileTextOutlined />,
+          label: <Link to={'/doctor/salesbill'}>{translate('sales_bill')}</Link>,
         },
         {
           key: 'returns',
-          label: <Link to={'/returns'}>{translate('returns')}</Link>,
-          icon: <SwapOutlined />,
+          icon: <RollbackOutlined />,
+          label: <Link to={'/doctor/returns'}>{translate('returns')}</Link>,
         },
         {
-          key: 'new-return',
-          label: <Link to={'/returns/new'}>{translate('new_return')}</Link>,
-          icon: <FileOutlined />,
+          key: 'inventory',
+          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
+          icon: <TagsOutlined />,
         }
       ],
       hospital: [
         {
           key: 'orders',
           icon: <ContainerOutlined />,
-          label: <Link to={'/orders'}>{translate('orders')}</Link>,
+          label: <Link to={'/hospital/orders'}>{translate('orders')}</Link>,
         },
         {
-          key: 'inventory',
-          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
-          icon: <TagsOutlined />,
+          key: 'delivery',
+          icon: <CarOutlined />,
+          label: <Link to={'/hospital/delivery'}>{translate('delivery')}</Link>,
+        },
+        {
+          key: 'history',
+          icon: <HistoryOutlined />,
+          label: <Link to={'/hospital/history'}>{translate('history')}</Link>,
+        },
+        {
+          key: 'salesbill',
+          icon: <FileTextOutlined />,
+          label: <Link to={'/hospital/salesbill'}>{translate('sales_bill')}</Link>,
+        },
+        {
+          key: 'returns',
+          icon: <RollbackOutlined />,
+          label: <Link to={'/hospital/returns'}>{translate('returns')}</Link>,
         }
       ],
       distributor: [
@@ -305,18 +335,6 @@ function Sidebar({ collapsible, isMobile = false }) {
     }
   }, [location]);
 
-  // Handle logo animation without causing infinite loops
-  useEffect(() => {
-    if (isNavMenuClose) {
-      setLogoApp(true);
-    } else {
-      const timer = setTimeout(() => {
-        setLogoApp(false);
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isNavMenuClose]);
-
   const onCollapse = () => {
     navMenu.collapse();
   };
@@ -346,14 +364,6 @@ function Sidebar({ collapsible, isMobile = false }) {
         style={{ cursor: 'pointer' }}
       >
         <img src={logoIcon} alt="Logo" style={{ marginLeft: '-5px', height: '40px' }} />
-
-        {!showLogoApp && (
-          <img
-            src={logoText}
-            alt="Logo"
-            style={{ marginTop: '3px', marginLeft: '10px', height: '38px' }}
-          />
-        )}
       </div>
       <Menu
         items={items}
