@@ -19,12 +19,16 @@ export const getinventory = async (params = {}) => {
       },
     });
 
-    console.log('Fetched Inventory:', response);
+    console.log('Fetched Inventory:', response); // ✅ Debug log
     if (response.success && Array.isArray(response.result)) {
       return response.result.map(item => ({
         ...item,
+<<<<<<< HEAD
+        key: item._id, // Ensure each item has a unique key
+=======
         key: item._id,
         status: item.quantity > 0 ? 'In Stock' : 'Out of Stock'
+>>>>>>> final_changes
       }));
     }
     return [];
@@ -51,12 +55,14 @@ export const getinventoryById = async (id) => {
 // Create Inventory (POST with headers)
 export const createinventory = async (data) => {
   try {
-    console.log('Creating inventory:', data);
-    return await request.create({
+    console.log('Creating inventory:', data); // ✅ Debug log
+    const response = await request.create({
       entity,
       jsonData: data,
       options: { headers: getAuthHeaders() },
     });
+    console.log('Response after creation:', response); // ✅ Debug log
+    return response.result;
   } catch (error) {
     console.error('Error creating inventory:', error);
     throw error;
@@ -66,12 +72,14 @@ export const createinventory = async (data) => {
 // Update Inventory (PATCH with headers)
 export const updateinventory = async (id, data) => {
   try {
-    return await request.update({
+    const response = await request.update({
       entity,
       id,
       jsonData: data,
       options: { headers: getAuthHeaders() },
     });
+    console.log('Response after update:', response); // ✅ Optional debug log
+    return response.result;
   } catch (error) {
     console.error('Error updating inventory:', error);
     throw error;
