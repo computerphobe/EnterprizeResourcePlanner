@@ -322,6 +322,19 @@ router.post('/returns/collect', authenticateToken, roleMiddleware(['deliverer', 
 });
 
 // --- Register entity-based dynamic routes ---
+router.route('/order/:orderId/assignDelivery')
+  .patch(authenticateToken, roleMiddleware(['owner', 'admin']), catchErrors(orderController.assignDeliverer));
+
+router.patch('/:id/assignDelivery', authenticateToken, roleMiddleware(['owner']), orderController.assignDeliverer); // optional legacy
+
+// 🏥 Hospital Order Routes
+router.route('/hospital/orders')
+  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.hospitalOrders));
+
+router.route('/hospital/orders/create')
+  .post(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.createHospitalOrder));
+
+// 🧠 Register all dynamic entity-based routes
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);

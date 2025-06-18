@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 // Remove old cached model if it exists
 const inventorySchema = new mongoose.Schema({
-    itemName: { type: String, required: true },  // Change 'name' to 'itemName'
+    itemName: { type: String, required: true },
     quantity: { type: Number, required: true },
-    category: { type: String, required: true },  // Change 'description' to 'category'
+    category: { type: String, required: true },
     price: { type: Number, required: true },
 }, { timestamps: true, collection: 'Inventory' });
 

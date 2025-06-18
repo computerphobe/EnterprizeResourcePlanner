@@ -45,6 +45,18 @@ const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 const FinancialReports = lazy(() => import('@/pages/FinancialReports'));
 
+const HospitalOrders = lazy(() => import('@/pages/Hospital/orders'));
+const HospitalDelivery = lazy(() => import('@/pages/Hospital/delivery'));
+const HospitalHistory = lazy(() => import('@/pages/Hospital/history'));
+const HospitalSalesBill = lazy(() => import('@/pages/Hospital/salesbill'));
+const HospitalReturns = lazy(() => import('@/pages/Hospital/returns'));
+
+const DoctorOrders = lazy(() => import('@/pages/Doctor/orders'));
+const DoctorDelivery = lazy(() => import('@/pages/Doctor/delivery'));
+const DoctorHistory = lazy(() => import('@/pages/Doctor/history'));
+const DoctorSalesBill = lazy(() => import('@/pages/Doctor/salesbill'));
+const DoctorReturns = lazy(() => import('@/pages/Doctor/returns'));
+
 export const routes = [
   { path: '/logout', element: <Logout /> },
   { path: '/about', element: <About /> },
@@ -82,6 +94,8 @@ export const routes = [
       </ProtectedRoute>
     ),
   },
+
+  // Protected Role-Based Dashboards
   {
     path: '/distributor',
     element: (
@@ -95,6 +109,46 @@ export const routes = [
     element: (
       <ProtectedRoute allowedRoles={['hospital']}>
         <HospitalDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital/orders',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital/delivery',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalDelivery />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital/history',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalHistory />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital/salesbill',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalSalesBill />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/hospital/returns',
+    element: (
+      <ProtectedRoute allowedRoles={['hospital']}>
+        <HospitalReturns />
       </ProtectedRoute>
     ),
   },
@@ -178,5 +232,55 @@ export const routes = [
       </ProtectedRoute>
     ),
   },
+
+  {
+    path: '/doctor',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/doctor/orders',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorOrders />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/doctor/delivery',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorDelivery />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/doctor/history',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorHistory />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/doctor/salesbill',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorSalesBill />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/doctor/returns',
+    element: (
+      <ProtectedRoute allowedRoles={['doctor']}>
+        <DoctorReturns />
+      </ProtectedRoute>
+    ),
+  },
+
   { path: '*', element: <NotFound /> },
 ];
