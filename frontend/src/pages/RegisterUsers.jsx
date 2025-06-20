@@ -11,6 +11,15 @@ const RegisterUser = () => {
   const { user } = useSelector(selectAuth);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
+
+  const handleRoleChange = (value) => {
+    setSelectedRole(value);
+    // Clear hospital name when role changes
+    if (value !== 'doctor') {
+      form.setFieldsValue({ hospitalName: undefined });
+    }
+  };
 
     const onFinish = async (values) => {
     setLoading(true);
@@ -54,7 +63,7 @@ const RegisterUser = () => {
         <Form.Item name="password" label="Password" rules={[{ required: true }]}>
           <Input.Password />
         </Form.Item>        <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-          <Select placeholder="Select a role">
+          <Select placeholder="Select a role" onChange={handleRoleChange}>
             <Option value="owner">Admin</Option>
             <Option value="doctor">Doctor</Option>
             <Option value="hospital">Hospital</Option>
@@ -63,6 +72,17 @@ const RegisterUser = () => {
             <Option value="accountant">Accountant</Option>
           </Select>
         </Form.Item>
+        
+        {/* Hospital name field for doctors */}
+        {selectedRole === 'doctor' && (
+          <Form.Item 
+            name="hospitalName" 
+            label="Hospital Name" 
+            rules={[{ required: true, message: 'Please enter the hospital name' }]}
+          >
+            <Input placeholder="Enter the hospital this doctor works at" />
+          </Form.Item>
+        )}
         
         {/* Additional fields for hospital/doctor roles */}
         <Form.Item name="phone" label="Phone Number">

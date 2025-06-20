@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Button, Typography, Spin } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, CarOutlined, HistoryOutlined, FileTextOutlined, RollbackOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Statistic, Button, Typography, Spin, message, Divider } from 'antd';
+import { DollarOutlined, ShoppingCartOutlined, CarOutlined, HistoryOutlined, FileTextOutlined, RollbackOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { getDoctorDashboardData } from '@/services/dashboardService';
 import styled from 'styled-components';
 
 const { Title } = Typography;
@@ -87,64 +88,134 @@ const DashboardTitle = styled(Title)`
   }
 `;
 
+const SummaryCard = styled(Card)`
+  background: linear-gradient(135deg, ${COLORS.accent}, ${COLORS.secondary});
+  border-radius: 15px;
+  margin-bottom: 2rem;
+  .ant-card-body {
+    text-align: center;
+    color: white;
+  }
+  .ant-statistic-title {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  .ant-statistic-content {
+    color: white !important;
+    font-size: 2.5rem !important;
+    font-weight: bold;
+  }
+`;
+
 const DoctorDashboard = () => {
     const navigate = useNavigate();
     const { current } = useSelector(selectAuth);
-    const token = current?.token || '';
     const [loading, setLoading] = useState(true);
-    const [metrics, setMetrics] = useState({
-        paidOrders: 0,
-        paidAmount: 0,
-        pendingOrders: 0,
-        pendingAmount: 0,
-        returns: 0
+    const [dashboardData, setDashboardData] = useState({
+        orders: { total: 0, completed: 0, pending: 0, completedAmount: 0, pendingAmount: 0, totalValue: 0 },
+        invoices: { total: 0, paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0, totalValue: 0 },
+        returns: { total: 0, value: 0 },
+        summary: { totalRevenue: 0, pendingRevenue: 0, totalOrderValue: 0, averageOrderValue: 0 }
     });
 
-    useEffect(() => {
-        fetchMetrics();
-    }, []);
-
-    const fetchMetrics = async () => {
-        try {
-            const response = await fetch('/api/doctor/metrics', {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                setMetrics(data.metrics);
-            }
-        } catch (error) {
-            console.error('Error fetching metrics:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Format currency
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: 'USD'
-        }).format(amount);
+            currency: 'USD',
+            minimumFractionDigits: 2
+        }).format(amount || 0);
     };
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            setLoading(true);
+            try {
+                const result = await getDoctorDashboardData();
+                
+                if (result.success) {
+                    setDashboardData(result.data);
+                } else {
+                    message.error('Failed to load dashboard data');
+                    console.error('Dashboard data fetch error:', result.error);
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+                message.error('Error loading dashboard data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    if (loading) {
+        return (
+            <DashboardContainer>
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <p style={{ marginTop: '20px', color: COLORS.lightText }}>Loading dashboard data...</p>
+                </div>
+            </DashboardContainer>
+        );
+    }
 
     return (
         <DashboardContainer>
             <DashboardTitle level={2}>Doctor Dashboard</DashboardTitle>
-            <Spin spinning={loading} size="large">
-                <Row gutter={[24, 24]} className="mb-6">
+            
+            {/* Summary Card */}
+            <Row gutter={[24, 24]} style={{ marginBottom: '2rem' }}>
+                <Col span={24}>
+                    <SummaryCard>
+                        <Row gutter={[24, 24]}>
+                            <Col xs={24} sm={8}>
+                                <Statistic
+                                    title="Total Revenue"
+                                    value={formatCurrency(dashboardData.summary.totalRevenue)}
+                                    prefix={<DollarOutlined />}
+                                />
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Statistic
+                                    title="Total Orders"
+                                    value={dashboardData.orders.total}
+                                    prefix={<ShoppingCartOutlined />}
+                                />
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Statistic
+                                    title="Average Order Value"
+                                    value={formatCurrency(dashboardData.summary.averageOrderValue)}
+                                    prefix={<DollarOutlined />}
+                                />
+                            </Col>
+                        </Row>
+                    </SummaryCard>
+                </Col>
+            </Row>
+
+            <Spin spinning={loading}>
+                <Row gutter={[24, 24]}>
+                    {/* Orders Section */}
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
-                                title="Paid Orders"
-                                value={metrics.paidOrders}
-                                prefix={<ShoppingCartOutlined style={{ color: COLORS.success }} />}
+                                title="Completed Orders"
+                                value={dashboardData.orders.completed}
+                                prefix={<CheckCircleOutlined style={{ color: COLORS.success }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Divider />
+                            <Statistic
+                                title="Completed Amount"
+                                value={formatCurrency(dashboardData.orders.completedAmount)}
+                                valueStyle={{ color: COLORS.success, fontSize: '1.2rem' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/doctor/orders')}
+                                style={{ marginTop: '15px' }}
                             >
                                 View Orders
                             </Button>
@@ -154,50 +225,48 @@ const DoctorDashboard = () => {
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
-                                title="Paid Amount"
-                                value={formatCurrency(metrics.paidAmount)}
-                                prefix={<DollarOutlined style={{ color: COLORS.accent }} />}
+                                title="Pending Orders"
+                                value={dashboardData.orders.pending}
+                                prefix={<ClockCircleOutlined style={{ color: COLORS.warning }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Divider />
+                            <Statistic
+                                title="Pending Amount"
+                                value={formatCurrency(dashboardData.orders.pendingAmount)}
+                                valueStyle={{ color: COLORS.warning, fontSize: '1.2rem' }}
+                            />
+                            <Button 
+                                type="primary" 
+                                onClick={() => navigate('/doctor/orders')}
+                                style={{ marginTop: '15px' }}
+                            >
+                                Track Orders
+                            </Button>
+                        </StyledCard>
+                    </Col>
+
+                    {/* Invoices Section */}
+                    <Col xs={24} sm={12} lg={8}>
+                        <StyledCard>
+                            <Statistic
+                                title="Paid Invoices"
+                                value={dashboardData.invoices.paid}
+                                prefix={<FileTextOutlined style={{ color: COLORS.success }} />}
+                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Divider />
+                            <Statistic
+                                title="Paid Amount"
+                                value={formatCurrency(dashboardData.invoices.paidAmount)}
+                                valueStyle={{ color: COLORS.success, fontSize: '1.2rem' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/doctor/salesbill')}
+                                style={{ marginTop: '15px' }}
                             >
-                                View Sales Bills
-                            </Button>
-                        </StyledCard>
-                    </Col>
-                    
-                    <Col xs={24} sm={12} lg={8}>
-                        <StyledCard>
-                            <Statistic
-                                title="Pending Orders"
-                                value={metrics.pendingOrders}
-                                prefix={<ShoppingCartOutlined style={{ color: COLORS.warning }} />}
-                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
-                            />
-                            <Button 
-                                type="primary" 
-                                onClick={() => navigate('/doctor/delivery')}
-                            >
-                                Track Delivery
-                            </Button>
-                        </StyledCard>
-                    </Col>
-                    
-                    <Col xs={24} sm={12} lg={8}>
-                        <StyledCard>
-                            <Statistic
-                                title="Pending Amount"
-                                value={formatCurrency(metrics.pendingAmount)}
-                                prefix={<DollarOutlined style={{ color: COLORS.warning }} />}
-                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
-                            />
-                            <Button 
-                                type="primary" 
-                                onClick={() => navigate('/doctor/history')}
-                            >
-                                View History
+                                View Invoices
                             </Button>
                         </StyledCard>
                     </Col>
@@ -205,17 +274,86 @@ const DoctorDashboard = () => {
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
+                                title="Unpaid Invoices"
+                                value={dashboardData.invoices.unpaid}
+                                prefix={<FileTextOutlined style={{ color: COLORS.warning }} />}
+                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Divider />
+                            <Statistic
+                                title="Unpaid Amount"
+                                value={formatCurrency(dashboardData.invoices.unpaidAmount)}
+                                valueStyle={{ color: COLORS.warning, fontSize: '1.2rem' }}
+                            />
+                            <Button 
+                                type="primary" 
+                                onClick={() => navigate('/doctor/salesbill')}
+                                style={{ marginTop: '15px' }}
+                            >
+                                Manage Payments
+                            </Button>
+                        </StyledCard>
+                    </Col>
+
+                    {/* Returns Section */}
+                    <Col xs={24} sm={12} lg={8}>
+                        <StyledCard>
+                            <Statistic
                                 title="Total Returns"
-                                value={metrics.returns}
+                                value={dashboardData.returns.total}
                                 prefix={<RollbackOutlined style={{ color: COLORS.secondary }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Divider />
+                            <Statistic
+                                title="Return Value"
+                                value={formatCurrency(dashboardData.returns.value)}
+                                valueStyle={{ color: COLORS.secondary, fontSize: '1.2rem' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/doctor/returns')}
+                                style={{ marginTop: '15px' }}
                             >
                                 Manage Returns
                             </Button>
+                        </StyledCard>
+                    </Col>
+
+                    {/* Quick Actions */}
+                    <Col xs={24} sm={12} lg={8}>
+                        <StyledCard>
+                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                <Title level={4} style={{ color: COLORS.text, marginBottom: '20px' }}>Quick Actions</Title>
+                                <Row gutter={[8, 8]}>
+                                    <Col span={24}>
+                                        <Button 
+                                            type="primary" 
+                                            onClick={() => navigate('/doctor/orders')}
+                                            style={{ marginBottom: '8px' }}
+                                        >
+                                            Place New Order
+                                        </Button>
+                                    </Col>
+                                    <Col span={24}>
+                                        <Button 
+                                            type="default" 
+                                            onClick={() => navigate('/doctor/returns')}
+                                            style={{ marginBottom: '8px' }}
+                                        >
+                                            Process Return
+                                        </Button>
+                                    </Col>
+                                    <Col span={24}>
+                                        <Button 
+                                            type="default" 
+                                            onClick={() => navigate('/doctor/history')}
+                                        >
+                                            View History
+                                        </Button>
+                                    </Col>
+                                </Row>
+                            </div>
                         </StyledCard>
                     </Col>
                 </Row>

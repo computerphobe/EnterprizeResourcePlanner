@@ -17,8 +17,7 @@ export default function Invoice() {
     displayLabels: ['name'],
     searchFields: 'name',
   };
-  const deleteModalLabels = ['number', 'client.name'];
-  const dataTableColumns = [
+  const deleteModalLabels = ['number', 'client.name'];  const dataTableColumns = [
     {
       title: translate('Number'),
       dataIndex: 'number',
@@ -26,6 +25,21 @@ export default function Invoice() {
     {
       title: translate('Client'),
       dataIndex: ['client', 'name'],
+    },
+    {
+      title: translate('Hospital'),
+      dataIndex: ['client', 'hospitalName'],
+      render: (hospitalName, record) => {
+        if (record.client?.userRole === 'doctor' && hospitalName) {
+          return hospitalName;
+        }
+        return record.client?.userRole === 'hospital' ? record.client?.name : '-';
+      },
+    },
+    {
+      title: translate('Patient Name'),
+      dataIndex: 'patientName',
+      render: (patientName) => patientName || '-',
     },
     {
       title: translate('Date'),

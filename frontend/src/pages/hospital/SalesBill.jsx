@@ -67,12 +67,17 @@ const SalesBill = () => {
     setSelectedBill(null);
     setDetailsVisible(false);
   };
-
   const columns = [
     {
       title: 'Bill Number',
       dataIndex: 'billNumber',
       key: 'billNumber',
+    },
+    {
+      title: 'Patient Name',
+      dataIndex: 'patientName',
+      key: 'patientName',
+      render: (patientName) => patientName || '-',
     },
     {
       title: 'Date',

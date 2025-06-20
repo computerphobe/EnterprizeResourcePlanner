@@ -5,6 +5,8 @@ const schema = Joi.object({
   year: Joi.number().required(),
   status: Joi.string().required(),
   notes: Joi.string().allow(''),
+  patientName: Joi.string().allow('').optional(), // Allow patient name for hospital/doctor invoices
+  discount: Joi.number().optional().default(0), // Allow discount field
   expiredDate: Joi.date().required(),
   date: Joi.date().required(),
   // array cannot be empty

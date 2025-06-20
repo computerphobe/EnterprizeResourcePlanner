@@ -266,13 +266,20 @@ router.post('/returns/collect', authenticateToken, roleMiddleware(['deliverer', 
       notes,
       collectedBy,
       collectionDate
-    } = req.body;
-
-    // Validate required fields
+    } = req.body;    // Validate required fields
     if (!orderId || !items || items.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Order ID and return items are required'
+      });
+    }
+
+    // Validate return quantities
+    const invalidItems = items.filter(item => !item.returnedQuantity || item.returnedQuantity <= 0);
+    if (invalidItems.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'All return items must have a quantity greater than 0'
       });
     }
 
@@ -288,13 +295,18 @@ router.post('/returns/collect', authenticateToken, roleMiddleware(['deliverer', 
     session.startTransaction();
 
     try {
-      const createdReturns = [];
-
-      // Create return entries for each item
+      const createdReturns = [];      // Create return entries for each item
       for (const item of items) {
+        const returnedQuantity = parseInt(item.returnedQuantity);
+        
+        // Double-check quantity is valid
+        if (!returnedQuantity || returnedQuantity <= 0) {
+          throw new Error(`Invalid return quantity for item: ${returnedQuantity}`);
+        }
+        
         const returnEntry = new Returns({
           originalItemId: item.originalItemId,
-          returnedQuantity: item.returnedQuantity,
+          returnedQuantity: returnedQuantity,
           reason: item.reason,
           status: 'Available for reuse',
           returnType: returnType || 'doctor',
@@ -458,5 +470,13 @@ routesList.forEach(({ entity, controllerName }) => {
 // ✅ REGISTER PRODUCT ROUTES HERE
 const productRoutes = require('./productRoutes');
 router.use('/productinventory', productRoutes); // ✅ MOUNT IT HERE
+
+// PDF generation for orders
+router.get(
+  '/order/:id/pdf',
+  authenticateToken,
+  roleMiddleware(['owner', 'admin', 'doctor', 'deliverer']),
+  catchErrors(orderController.generateOrderPdf)
+);
 
 module.exports = router;

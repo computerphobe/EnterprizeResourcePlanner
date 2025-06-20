@@ -840,7 +840,7 @@ const OrderList = () => {
       render: (orderNumber) => orderNumber || 'N/A',
     },
     {
-      title: 'Return ID (Debug)',
+      title: 'Return ID',
       key: 'returnId',
       render: (_, record) => (
         <Text code style={{ fontSize: '10px' }}>
@@ -988,7 +988,7 @@ const OrderList = () => {
                   
                   <Row style={{ marginTop: 16 }}>
                     <Col span={24}>
-                      <Text strong>Order ID (Debug):</Text>
+                      <Text strong>Order ID:</Text>
                       <br />
                       <Text code>{order._id}</Text>
                     </Col>
@@ -1363,7 +1363,7 @@ const OrderList = () => {
                   </Row>
                   <Row style={{ marginTop: 16 }}>
                     <Col span={24}>
-                      <Text strong>Item ID (Debug):</Text>
+                      <Text strong>Item ID:</Text>
                       <br />
                       <Text code>{selectedItem._id}</Text>
                     </Col>

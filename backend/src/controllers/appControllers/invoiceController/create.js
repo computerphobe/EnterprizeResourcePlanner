@@ -50,7 +50,12 @@ const create = async (req, res) => {
     // Set organizationId - use admin's organizationId or admin's ID if they're the owner
     body['organizationId'] = req.admin.organizationId || req.admin._id;
     
-    console.log(`📋 Creating invoice with organizationId: ${body['organizationId']}`);
+    // Include patientName if provided
+    if (body.patientName) {
+      body['patientName'] = body.patientName.trim();
+    }
+    
+    console.log(`📋 Creating invoice with organizationId: ${body['organizationId']}, patientName: ${body['patientName'] || 'N/A'}`);
 
     // Save invoice
     const result = await new Model(body).save();

@@ -198,8 +198,8 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
   }
 
   return (
-    <>
-      <Row gutter={[12, 0]}>        <Col span={8}>
+    <>      <Row gutter={[12, 0]}>
+        <Col span={8}>
           <Form.Item name="client" label={translate('Client')} rules={[{ required: true, message: translate('Client is required') }]}>
             <AutoCompleteAsync
               entity="client"
@@ -211,7 +211,12 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
               redirectLabel={translate('Add New Client')}
             />
           </Form.Item>
-        </Col>        <Col span={3}>
+        </Col>
+        <Col span={8}>
+          <Form.Item name="patientName" label={translate('Patient Name')}>
+            <Input placeholder={translate('Enter patient name (optional)')} />
+          </Form.Item>
+        </Col><Col span={3}>
           <Form.Item label={translate('number')} name="number" rules={[{ required: true, message: translate('Number is required') }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>

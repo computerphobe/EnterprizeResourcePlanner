@@ -8,7 +8,7 @@ const adminSchema = new Schema({
   },
   enabled: {
     type: Boolean,
-    default: false,
+    default: true,
   },
   organizationId: {
     type: mongoose.Schema.ObjectId,
@@ -22,11 +22,16 @@ const adminSchema = new Schema({
     required: true,
   },
   name: { type: String, required: true },
-  surname: { type: String },
-  photo: {
+  surname: { type: String },  photo: {
     type: String,
     trim: true,
-  },  created: {
+  },
+  hospitalName: {
+    type: String,
+    trim: true,
+    required: false // Only required for doctors
+  },
+  created: {
     type: Date,
     default: Date.now,
   },

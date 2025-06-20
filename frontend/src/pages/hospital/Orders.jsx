@@ -181,10 +181,31 @@ const Orders = () => {
     setSelectedOrder(null);
     setOrderDetailsVisible(false);
   };
+  const handleGeneratePDF = async (order) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_SERVER}api/order/${order._id}/pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-  const handleGeneratePDF = (order) => {
-    // TODO: Implement PDF generation
-    console.log('Generate PDF for order:', order);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.result.url) {
+          // Open PDF in new tab
+          window.open(`${import.meta.env.VITE_BACKEND_SERVER}${data.result.url}`, '_blank');
+        } else {
+          message.error('Failed to generate PDF');
+        }
+      } else {
+        message.error('Error generating PDF');
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      message.error('Error generating PDF');
+    }
   };
   const handlePlaceOrder = () => {
     setIsModalVisible(true);

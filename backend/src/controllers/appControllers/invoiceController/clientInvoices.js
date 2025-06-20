@@ -89,15 +89,13 @@ const getClientInvoices = async (req, res) => {
     if (client.organizationId && organizationId) {
       invoiceQuery.organizationId = organizationId;
     }
-    
-    const invoices = await Invoice.find(invoiceQuery)
-      .populate("client", "name email userRole")
+      const invoices = await Invoice.find(invoiceQuery)
+      .populate("client", "name email userRole hospitalName")
       .populate("payment")
       .sort({ date: -1 });
     
     console.log(`📊 Found ${invoices.length} invoices for client ${client.name}`);
-    
-    // Transform data for frontend display
+      // Transform data for frontend display
     const formattedInvoices = invoices.map(invoice => ({
       _id: invoice._id,
       billNumber: `INV-${invoice.number}/${invoice.year}`,
@@ -114,6 +112,7 @@ const getClientInvoices = async (req, res) => {
       pdf: invoice.pdf || null,
       items: invoice.items || [],
       client: invoice.client || {},
+      patientName: invoice.patientName || null, // Include patient name
       taxRate: invoice.taxRate || 0,
       subTotal: invoice.subTotal || 0,
       taxTotal: invoice.taxTotal || 0,
@@ -126,12 +125,12 @@ const getClientInvoices = async (req, res) => {
       result: formattedInvoices,
       message: formattedInvoices.length > 0 
         ? `Found ${formattedInvoices.length} invoices` 
-        : "No invoices found",
-      clientInfo: {
+        : "No invoices found",      clientInfo: {
         id: client._id,
         name: client.name,
         email: client.email,
         role: client.userRole,
+        hospitalName: client.hospitalName, // Include hospital name
         linkedUserId: client.linkedUserId,
         isLegacyClient: !client.email || !client.organizationId // Flag for legacy clients
       }

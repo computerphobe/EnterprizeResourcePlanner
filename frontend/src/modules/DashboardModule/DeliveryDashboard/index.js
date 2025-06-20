@@ -90,17 +90,14 @@ const DeliveryDashboard = () => {
     setCurrentColumns(currentCols);
     setHistoryColumns(historyCols);
   }, []);
-
   const handlePickupConfirm = (orderId) => {
-    console.log(`Pickup confirmed for order ${orderId}`);
-    // TODO: dispatch pickup confirmation action
-    // dispatch(confirmPickup(orderId));
+    // Navigate to pickup confirmation page
+    window.location.href = `/delivery/pickup-confirmation/${orderId}`;
   };
 
   const handleDeliveryConfirm = (orderId) => {
-    console.log(`Delivery confirmed for order ${orderId}`);
-    // TODO: dispatch delivery confirmation action
-    // dispatch(confirmDelivery(orderId));
+    // Navigate to delivery confirmation page  
+    window.location.href = `/delivery/delivery-confirmation/${orderId}`;
   };
 
   return (

@@ -6,7 +6,7 @@ const bcrypt = require("bcryptjs");
 console.log("register endpoint hit");
 
 const register = async (req, res) => {
-    const { name, surname, email, password, role, phone, address, country } = req.body;
+    const { name, surname, email, password, role, phone, address, country, hospitalName } = req.body;
     console.log("register endpoint hit", req.body);
     
     if (!email || !password || !name || !role) {
@@ -74,13 +74,13 @@ const register = async (req, res) => {
       
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(salt + password, 10);
-    
       const newUser = new Admin({
         name,
         surname,
         email,
         role,
         organizationId: role === 'owner' ? null : organizationId, // Owners don't have organizationId
+        hospitalName: role === 'doctor' ? hospitalName : undefined, // Only for doctors
       });
     
       await newUser.save();
@@ -101,8 +101,7 @@ const register = async (req, res) => {
         if (!organizationId) {
           throw new Error('Cannot create client record: No organization ID available');
         }
-        
-        clientRecord = new Client({
+          clientRecord = new Client({
           name: `${name} ${surname || ''}`.trim(),
           email: email,
           phone: phone || null,
@@ -111,6 +110,7 @@ const register = async (req, res) => {
           linkedUserId: newUser._id,
           userRole: role,
           organizationId: organizationId,
+          hospitalName: role === 'doctor' ? hospitalName : undefined, // Only for doctors
           createdBy: adminContext?._id,
           enabled: true,
           removed: false

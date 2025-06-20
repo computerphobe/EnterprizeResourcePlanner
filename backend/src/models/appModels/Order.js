@@ -51,9 +51,13 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
     required: function () { return this.orderType === 'doctor'; }
-  },
-  doctorName: String,
+  },  doctorName: String,
   hospitalName: String,
+  patientName: {
+    type: String,
+    trim: true,
+    required: false // Optional field for patient name
+  },
   delivererId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',

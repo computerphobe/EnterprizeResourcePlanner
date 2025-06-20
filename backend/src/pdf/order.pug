@@ -1,0 +1,190 @@
+doctype html
+html(lang='en')
+  head
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    meta(charset='UTF-8')
+    title Order - #{model.orderNumber}
+    style
+      :css
+        body {
+          font-family: 'Arial', sans-serif;
+          margin: 0;
+          padding: 20px;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #333;
+        }
+        .header {
+          border-bottom: 2px solid #333;
+          padding-bottom: 20px;
+          margin-bottom: 20px;
+        }
+        .company-info {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .company-name {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .order-details {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        .order-info, .hospital-info {
+          width: 48%;
+        }
+        .order-info h3, .hospital-info h3 {
+          font-size: 14px;
+          margin-bottom: 10px;
+          color: #666;
+        }
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
+        }
+        .items-table th,
+        .items-table td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+        }
+        .items-table th {
+          background-color: #f5f5f5;
+          font-weight: bold;
+        }
+        .text-right {
+          text-align: right;
+        }
+        .totals {
+          width: 40%;
+          margin-left: auto;
+          margin-top: 20px;
+        }
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 5px 0;
+        }
+        .total-row.grand-total {
+          border-top: 2px solid #333;
+          font-weight: bold;
+          font-size: 14px;
+        }
+        .footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 10px;
+          color: #666;
+        }
+        .status-badge {
+          display: inline-block;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .status-processing { background-color: #d4edda; color: #155724; }
+        .status-completed { background-color: #d1ecf1; color: #0c5460; }
+        .status-collected { background-color: #e2e3e5; color: #383d41; }
+
+  body
+    .header
+      .company-info
+        .company-name #{settings.company_name || 'ERP System'}
+        div #{settings.company_address || ''}
+        div #{settings.company_phone || ''} | #{settings.company_email || ''}
+
+    .order-details
+      .order-info
+        h3 Order Information
+        p
+          strong Order Number: 
+          | #{model.orderNumber}
+        p
+          strong Date: 
+          | #{dateFormat(model.createdAt)}
+        p
+          strong Status: 
+          span(class=`status-badge status-${model.status}`) #{model.status}
+        if model.patientName
+          p
+            strong Patient Name: 
+            | #{model.patientName}
+
+      .hospital-info
+        h3 Hospital Information
+        p
+          strong Hospital: 
+          | #{model.doctorId && model.doctorId.hospitalName ? model.doctorId.hospitalName : 'N/A'}
+        if model.doctorId && model.doctorId.name
+          p
+            strong Doctor: 
+            | #{model.doctorId.name}
+        if model.doctorId && model.doctorId.email
+          p
+            strong Email: 
+            | #{model.doctorId.email}
+        if model.notes
+          p
+            strong Notes: 
+            | #{model.notes}
+
+    table.items-table
+      thead
+        tr
+          th Item Name
+          th Category
+          th Quantity
+          th Unit Price
+          th Total
+      tbody
+        each item in model.items
+          tr
+            td #{item.itemName || item.item || 'N/A'}
+            td #{item.category || 'N/A'}
+            td.text-right #{item.quantity}
+            td.text-right #{moneyFormatter({ amount: item.price || 0 })}
+            td.text-right #{moneyFormatter({ amount: (item.quantity * (item.price || 0)) })}
+
+    .totals
+      .total-row
+        span Subtotal:
+        span #{moneyFormatter({ amount: model.subTotal || 0 })}
+      if model.taxRate && model.taxRate > 0
+        .total-row
+          span Tax (#{model.taxRate}%):
+          span #{moneyFormatter({ amount: model.taxAmount || 0 })}
+      if model.discount && model.discount > 0
+        .total-row
+          span Discount:
+          span -#{moneyFormatter({ amount: model.discount })}
+      .total-row.grand-total
+        span Grand Total:
+        span #{moneyFormatter({ amount: model.totalAmount || 0 })}
+
+    if model.returnedItems && model.returnedItems.length > 0
+      h3 Returned Items
+      table.items-table
+        thead
+          tr
+            th Item Name
+            th Returned Quantity  
+            th Return Reason
+            th Return Date
+        tbody
+          each returnItem in model.returnedItems
+            tr
+              td #{returnItem.itemName || 'N/A'}
+              td.text-right #{returnItem.returnedQuantity}
+              td #{returnItem.returnReason || 'N/A'}
+              td #{dateFormat(returnItem.returnDate)}
+
+    .footer
+      p Generated on #{dateFormat(new Date())}
+      p This is a computer generated document.

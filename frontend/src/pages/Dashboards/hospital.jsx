@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Button, Typography, Spin } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, CarOutlined, HistoryOutlined, FileTextOutlined, RollbackOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Statistic, Button, Typography, Spin, message, Divider } from 'antd';
+import { DollarOutlined, ShoppingCartOutlined, CarOutlined, HistoryOutlined, FileTextOutlined, RollbackOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { getHospitalDashboardData } from '@/services/dashboardService';
 import styled from 'styled-components';
 
 const { Title } = Typography;
@@ -83,179 +84,188 @@ const DashboardTitle = styled(Title)`
     width: 60px;
     height: 4px;
     background: ${COLORS.accent};
-    border-radius: 2px;
+    border-radius: 2px;  }
+`;
+
+const SummaryCard = styled(Card)`
+  background: linear-gradient(135deg, ${COLORS.accent}, ${COLORS.secondary});
+  border-radius: 15px;
+  margin-bottom: 2rem;
+  .ant-card-body {
+    text-align: center;
+    color: white;
+  }
+  .ant-statistic-title {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  .ant-statistic-content {
+    color: white !important;
+    font-size: 2.5rem !important;
+    font-weight: bold;
   }
 `;
 
 const HospitalDashboard = () => {
     const navigate = useNavigate();
     const { current } = useSelector(selectAuth);
-    const token = current?.token || '';
-    const [loading, setLoading] = useState(true);
-    const [metrics, setMetrics] = useState({
-        paidOrders: 0,
-        paidAmount: 0,
-        pendingOrders: 0,
-        pendingAmount: 0,
-        returns: 0
+    const [loading, setLoading] = useState(true);    const [dashboardData, setDashboardData] = useState({
+        orders: { total: 0, completed: 0, pending: 0, completedAmount: 0, pendingAmount: 0, totalValue: 0 },
+        invoices: { total: 0, paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0, totalValue: 0 },
+        returns: { total: 0, value: 0 },
+        summary: { totalRevenue: 0, pendingRevenue: 0, totalOrderValue: 0, averageOrderValue: 0 }
     });
 
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2
+        }).format(amount || 0);
+    };
+
     useEffect(() => {
-        const fetchMetrics = async () => {
+        const fetchDashboardData = async () => {
             setLoading(true);
             try {
-                const [ordersRes, returnsRes] = await Promise.all([
-                    fetch('/api/hospital/orders', {
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }),
-                    fetch('/api/hospital/returns', {
-                        headers: { 
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                ]);
+                const result = await getHospitalDashboardData();
                 
-                if (!ordersRes.ok || !returnsRes.ok) {
-                    throw new Error('Failed to fetch metrics');
-                }
-                
-                const [ordersData, returnsData] = await Promise.all([
-                    ordersRes.json(),
-                    returnsRes.json()
-                ]);
-                
-                if (ordersData.success) {
-                    const orders = ordersData.result || [];
-                    const paidOrders = orders.filter(order => order.status === 'completed');
-                    const pendingOrders = orders.filter(order => order.status === 'pending' || order.status === 'processing');
-                    
-                    const paidAmount = paidOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-                    const pendingAmount = pendingOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-                    
-                    setMetrics(prev => ({
-                        ...prev,
-                        paidOrders: paidOrders.length,
-                        paidAmount,
-                        pendingOrders: pendingOrders.length,
-                        pendingAmount
-                    }));
-                }
-
-                if (returnsData.success) {
-                    const returns = returnsData.returns || [];
-                    setMetrics(prev => ({
-                        ...prev,
-                        returns: returns.length
-                    }));
+                if (result.success) {
+                    setDashboardData(result.data);
+                } else {
+                    message.error('Failed to load dashboard data');
+                    console.error('Dashboard data fetch error:', result.error);
                 }
             } catch (error) {
-                console.error('Error fetching metrics:', error);
+                console.error('Error fetching dashboard data:', error);
+                message.error('Error loading dashboard data');
             } finally {
                 setLoading(false);
             }
         };
 
-        if (token) {
-            fetchMetrics();
-        }
-    }, [token]);
+        fetchDashboardData();
+    }, []);
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR'
-        }).format(amount);
-    };
-
-    return (
+    if (loading) {
+        return (
+            <DashboardContainer>
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                    <Spin size="large" />
+                    <p style={{ marginTop: '20px', color: COLORS.lightText }}>Loading dashboard data...</p>
+                </div>
+            </DashboardContainer>
+        );
+    }return (
         <DashboardContainer>
             <DashboardTitle level={2}>Hospital Dashboard</DashboardTitle>
             
-            <Spin spinning={loading} size="large">
-                <Row gutter={[24, 24]} className="mb-6">
+            <Spin spinning={loading}>
+                <Row gutter={[24, 24]}>
+                    {/* Total Orders */}
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
-                                title="Paid Orders"
-                                value={metrics.paidOrders}
-                                prefix={<ShoppingCartOutlined style={{ color: COLORS.success }} />}
+                                title="Total Orders"
+                                value={dashboardData.orders.total}
+                                prefix={<ShoppingCartOutlined style={{ color: COLORS.primary }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/hospital/orders')}
+                                style={{ marginTop: '15px' }}
                             >
                                 View Orders
                             </Button>
                         </StyledCard>
                     </Col>
-                    
+                      {/* Completed Orders */}
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
-                                title="Paid Amount"
-                                value={formatCurrency(metrics.paidAmount)}
-                                prefix={<DollarOutlined style={{ color: COLORS.accent }} />}
+                                title="Completed Orders"
+                                value={dashboardData.orders.completed}
+                                prefix={<CheckCircleOutlined style={{ color: COLORS.success }} />}
+                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Button 
+                                type="primary" 
+                                onClick={() => navigate('/hospital/orders')}
+                                style={{ marginTop: '15px' }}
+                            >
+                                View Completed
+                            </Button>
+                        </StyledCard>
+                    </Col>                    {/* Pending Orders */}
+                    <Col xs={24} sm={12} lg={8}>
+                        <StyledCard>
+                            <Statistic
+                                title="Pending Orders"
+                                value={dashboardData.orders.pending}
+                                prefix={<ClockCircleOutlined style={{ color: COLORS.warning }} />}
+                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                            />
+                            <Button 
+                                type="primary" 
+                                onClick={() => navigate('/hospital/orders')}
+                                style={{ marginTop: '15px' }}
+                            >
+                                Track Pending
+                            </Button>
+                        </StyledCard>
+                    </Col>                    {/* Total Invoices */}
+                    <Col xs={24} sm={12} lg={8}>
+                        <StyledCard>
+                            <Statistic
+                                title="Total Invoices"
+                                value={dashboardData.invoices.total}
+                                prefix={<FileTextOutlined style={{ color: COLORS.accent }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/hospital/salesbill')}
+                                style={{ marginTop: '15px' }}
                             >
-                                View Sales Bills
+                                View Invoices
                             </Button>
                         </StyledCard>
-                    </Col>
-                    
+                    </Col>                    {/* Paid Invoices */}
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
-                                title="Pending Orders"
-                                value={metrics.pendingOrders}
-                                prefix={<ShoppingCartOutlined style={{ color: COLORS.warning }} />}
+                                title="Paid Invoices"
+                                value={dashboardData.invoices.paid}
+                                prefix={<DollarOutlined style={{ color: COLORS.success }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
                             />
-                            <Button 
-                                type="primary" 
-                                onClick={() => navigate('/hospital/delivery')}
-                            >
-                                Track Delivery
-                            </Button>
-                        </StyledCard>
-                    </Col>
-                    
-                    <Col xs={24} sm={12} lg={8}>
-                        <StyledCard>
+                            <Divider />
                             <Statistic
-                                title="Pending Amount"
-                                value={formatCurrency(metrics.pendingAmount)}
-                                prefix={<DollarOutlined style={{ color: COLORS.warning }} />}
-                                valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
+                                title="Total Revenue"
+                                value={formatCurrency(dashboardData.summary.totalRevenue)}
+                                valueStyle={{ color: COLORS.success, fontSize: '1.2rem' }}
                             />
                             <Button 
                                 type="primary" 
-                                onClick={() => navigate('/hospital/history')}
+                                onClick={() => navigate('/hospital/salesbill')}
+                                style={{ marginTop: '15px' }}
                             >
-                                View History
+                                View Revenue
                             </Button>
                         </StyledCard>
-                    </Col>
-
+                    </Col>                    {/* Returns */}
                     <Col xs={24} sm={12} lg={8}>
                         <StyledCard>
                             <Statistic
                                 title="Total Returns"
-                                value={metrics.returns}
+                                value={dashboardData.returns.total}
                                 prefix={<RollbackOutlined style={{ color: COLORS.secondary }} />}
                                 valueStyle={{ color: COLORS.text, fontWeight: 'bold' }}
                             />
                             <Button 
                                 type="primary" 
                                 onClick={() => navigate('/hospital/returns')}
+                                style={{ marginTop: '15px' }}
                             >
                                 Manage Returns
                             </Button>

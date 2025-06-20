@@ -10,317 +10,368 @@ html
         height: 297mm;
       }
 
-      body{
+      body {
         width: 100%; 
         margin: 0;
-        padding: 0px ;
+        padding: 20px;
         background: #ffffff;
-        font-family: sans-serif;
-        font-size:12px;
-        color:#222
-      }
-      *, *:before, *:after {
-        box-sizing: inherit;
-        color:#222
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        color: #000;
+        line-height: 1.3;
       }
 
-      .clearfix {
-        display: block; }
-      //- .invoice-container {
-      //-   position: relative;
-      //-   margin: 0 auto;
-      //-   color: #001028;
-      //-   background: #fff;
-      //-   font-size: 10px;
-      //- }
-      .left{
-        float:left;
-      }
-      .right{
-        float:right;
-      }
-      .top-area {    
-        display: block;
-        width:100%;
-        
-      }
-      alignRight :{
-        text-align: right !important;
-      }
-      alignLeft :{
-        text-align: left;
-      }
-      .logo {
-        width: 150px;
-      }
-      .company-info{
-        text-align: right;
-        font-size:12px;
-      }
-      h1.invoice{
-        font-size:32px;
-        color:#52008c;
-        margin-top:0;
-      }
-      p.strong{
-        font-weight:700;
-      }
-      .billTo p {
-        text-align: right !important;
-        float:right;
-        display:block;
-        font-size:12px;
-        width:100%;
-        margin-top:0;
-        margin-bottom:10px;
-        
+      * {
+        box-sizing: border-box;
       }
 
-      .tableHeader{
-        color:#52008c;
+      .clearfix::after {
+        content: "";
+        display: table;
+        clear: both;
       }
-      .clearfix {
-        display: block; }
-      .col {
-        float:left;
+
+      .left { float: left; }
+      .right { float: right; }
+      .center { text-align: center; }
+
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 15px;
       }
-      .col-1 {
-        width: 4.16667%; }
 
-      .col-2 {
-        width: 8.33333%; }
-
-      .col-3 {
-        width: 12.5%; }
-
-      .col-4 {
-        width: 16.66667%; }
-
-      .col-5 {
-        width: 20.83333%; }
-
-      .col-6 {
-        width: 25%; }
-
-      .col-7 {
-        width: 29.16667%; }
-
-      .col-8 {
-        width: 33.33333%; }
-
-      .col-9 {
-        width: 37.5%; }
-
-      .col-10 {
-        width: 41.66667%; }
-
-      .col-11 {
-        width: 45.83333%; }
-
-      .col-12 {
-        width: 50%; }
-
-      .col-13 {
-        width: 54.16667%; }
-
-      .col-14 {
-        width: 58.33333%; }
-
-      .col-15 {
-        width: 62.5%; }
-
-      .col-16 {
-        width: 66.66667%; }
-
-      .col-17 {
-        width: 70.83333%; }
-
-      .col-18 {
-        width: 75%; }
-
-      .col-19 {
-        width: 79.16667%; }
-
-      .col-20 {
-        width: 83.33333%; }
-
-      .col-21 {
-        width: 87.5%; }
-
-      .col-22 {
-        width: 91.66667%; }
-
-      .col-23 {
-        width: 95.83333%; }
-
-      .col-24 {
-        width: 100%; }
-      .space {
-        margin-top: 30px;
-        margin-bottom: 40px;
-        width:100%;
+      .company-name {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 5px;
       }
-      .top-area .number-invoice > h1 {
-        font-weight: 500;
-      }
-      .about-invoice {
-        padding: 0px 15px;
-        margin-top: 10px;
-        font-size: 13px;
-      }
-      .project-invoice {
-        float: left;
+
+      .company-details {
+        font-size: 10px;
         margin-bottom: 10px;
       }
-      .project-invoice span {
-        color: #5d6975;
-        text-align: right;
-        width: 52px;
-        margin-right: 10px;
-        display: inline-block;
-        font-size: 0.8em;
+
+      .invoice-title {
+        font-size: 16px;
+        font-weight: bold;
+        background: #000;
+        color: #fff;
+        padding: 5px;
+        margin: 10px 0;
       }
-      .company-invoice {
-        float: right;
-        text-align: right;
-        margin-bottom: 60px;
-      }
-      .project-invoice div, .company-invoice div {
-        white-space: nowrap;
-        margin: 5px auto;
-      }
-      .table-invoice {
-        width: 100%;
-        border-collapse: collapse;
-        border-spacing: 0;
+
+      .invoice-info {
         margin-bottom: 20px;
       }
-      .table-invoice tr:nth-child(2n-1) td {
-        background: #fcfeff;
-      }
-      .table-invoice th, .table-invoice td {
-        text-align: center;
-      }
-      .table-invoice th {
-        padding: 8px 10px;
-        border-bottom: 1px solid #c2e0f2;
-        color:#52008c;
-        white-space: nowrap;
-        font-weight: 700;
-        font-size: 12px;
-        text-align: right;
-      }
-      tbody{
-        border-bottom: 1px solid #c2e0f2;
-      }
-      .table-invoice .service, .table-invoice .desc {
-        text-align: left;
-      }
-      .table-invoice td {
-        padding: 10px ;
-        text-align: right;
-        font-size: 11px;
-      }
-      .table-invoice td.service, .table-invoice td.desc {
-        vertical-align: top;
-      }
-      .table-invoice td.unit, .table-invoice td.qty, .table-invoice td.total {
-        
-      }
-      .table-invoice td.grand {
-        border-top: 1px solid #5d6975;
-      }
-      .service span{
-        display:block;
-        clear:both;
-        width : 100%;
-        color:#666;
-        margin-top:5px;
-        font-size:10px;
-      }
-      .notice-invoice {
-        padding: 15px;
-      }
-      .notice-invoice .notice {
-        color: #5d6975;
-        
-      }
-      .footer-invoice {
-        margin-top:30px
-        color: #5d6975;
-        width: 100%;
-        position: absolute;
-        bottom: 0;
-        
-        padding: 20px 0;
-        text-align: center;
-      }
- 
-  body
-    
-      header.clearfix
-        .top-area
-          img.logo.left(src=settings.public_server_file+settings.company_logo)
-          .right.company-info
-              p.strong #{settings.company_name}
-              p #{settings.company_address}
-              p #{settings.company_reg_number}
-              
-        .col.col-24
-          .space  
-        .left.col-14
-            h1.invoice
-              | #{translate('invoice')}
-            div 
-              .col.col-7
-                p.strong #{translate('Date')} :
-                p #{moment(model.date).format(dateFormat)}
-              .col.col-9
-                p.strong #{translate('Expired Date')} :
-                p #{moment(model.expiredDate).format(dateFormat)}
-              .col.col-8 
-                p.strong #{translate('Number')} :
-                p # #{model.number}/#{model.year || ""} 
-              
-        .right.col-10
-            .billTo
-                p #{translate('Client')} :
-                p #{model.client.name}
-                p #{model.client.address}
-                p #{model.client.phone}
-                p #{model.client.email}
-        .col.col-24
-          .space  
-      main
-        table.table-invoice
-          thead
-            tr.tableHeader
-              th.service #{translate('item')}
-              th #{translate('Quantity')}
-              th #{translate('PRICE')}
-              th #{translate('TOTAL')}
-          tbody
-            each item in model.items
-              tr
-                td.service #{item.itemName}
-                  span #{item.description}
-                td.qty #{item.quantity}  
-                td.unit  #{moneyFormatter({amount:item.price})}
-                td.total #{moneyFormatter({amount:item.total})}
-            tr
-              td(colspan='3') #{translate('SUB TOTAL')}
-              td.total #{moneyFormatter({amount:model.subTotal})}
-            tr
-              td(colspan='3') #{translate('TAX')} #{model.taxRate} %
-              td.total #{moneyFormatter({amount:model.taxTotal})}
-            tr
-              td.grand.total(colspan='3')  #{translate('TOTAL')} 
-              td.grand.total #{moneyFormatter({amount:model.total})}
-        
-      .col.col-24
-          .space     
-      footer.footer-invoice
-        //- | Invoice was created on a computer and is valid without the signature and seal.
-          
 
-   
+      .info-row {
+        display: flex;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 3px;
+      }
+
+      .info-label {
+        font-weight: bold;
+        min-width: 120px;
+        padding-right: 10px;
+      }
+
+      .info-value {
+        flex: 1;
+      }
+
+      .two-column {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .column {
+        flex: 1;
+      }
+
+      .section-title {
+        font-weight: bold;
+        background: #f0f0f0;
+        padding: 5px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+      }
+
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        border: 1px solid #000;
+      }
+
+      .items-table th,
+      .items-table td {
+        border: 1px solid #000;
+        padding: 8px 5px;
+        text-align: left;
+        font-size: 10px;
+      }
+
+      .items-table th {
+        background: #f0f0f0;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .items-table .center { text-align: center; }
+      .items-table .right { text-align: right; }
+
+      .summary-section {
+        float: right;
+        width: 300px;
+        margin-top: 10px;
+      }
+
+      .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #000;
+      }
+
+      .summary-table td {
+        border: 1px solid #000;
+        padding: 5px;
+        font-size: 10px;
+      }
+
+      .summary-table .label {
+        background: #f0f0f0;
+        font-weight: bold;
+        width: 60%;
+      }
+
+      .summary-table .amount {
+        text-align: right;
+        width: 40%;
+      }
+
+      .total-row {
+        font-weight: bold;
+        background: #e0e0e0;
+      }
+
+      .amount-words {
+        margin: 15px 0;
+        font-weight: bold;
+      }
+
+      .terms-section {
+        margin-top: 30px;
+        font-size: 10px;
+      }
+
+      .terms-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .terms-list {
+        list-style: decimal;
+        margin-left: 20px;
+      }
+
+      .terms-list li {
+        margin-bottom: 5px;
+      }
+
+      .footer-section {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        font-size: 10px;
+      }
+
+      .bank-details {
+        flex: 1;
+      }
+
+      .signature-section {
+        flex: 1;
+        text-align: right;
+      }
+
+      .page-info {
+        text-align: center;
+        font-size: 10px;
+        margin-top: 20px;
+      }
+
+  body
+    .sheet
+      // Header Section
+      .header
+        .company-name #{settings.company_name || 'SHASHWAT IMPLANT AND SURGICAL CARE'}
+        .company-details
+          div #{settings.company_address || 'STORE NO. 4, SHYAM ARCADE, BHANGALI GATE, BHAVNAGAR -364001'}
+          div MOBILE : #{settings.company_phone || '+91 7874217777 / +91 8799332575'}
+        
+        .invoice-title TAX INVOICE
+        .center 
+          strong Debit Memo Original
+
+      // Invoice Information Section
+      .invoice-info
+        .two-column
+          .column
+            .info-row
+              .info-label M/s. :
+              .info-value #{model.client.name || ''}
+            .info-row
+              .info-label
+              .info-value #{model.client.address || ''}
+            .info-row
+              .info-label SALESMAN :
+              .info-value #{model.salesman || 'VISHAL'}
+            .info-row
+              .info-label Place of Supply :
+              .info-value #{model.placeOfSupply || '24-Gujarat'}
+
+          .column
+            .info-row
+              .info-label Invoice No. :
+              .info-value #{model.number}/#{model.year || ''}
+            .info-row
+              .info-label Date :
+              .info-value #{moment(model.date).format(dateFormat)}
+            .info-row
+              .info-label DR. NAME :
+              .info-value #{model.doctorName || ''}
+            .info-row
+              .info-label Patient Name :
+              .info-value #{model.patientName || ''}
+            .info-row
+              .info-label IPD No. :
+              .info-value #{model.ipdNumber || ''}
+            .info-row
+              .info-label D.L.NO. :
+              .info-value #{model.dlNumber || ''}
+
+      // Items Table
+      table.items-table
+        thead
+          tr
+            th.center Sr
+            th Product Name
+            th.center HSN Code
+            th.center Batch
+            th.center Qty
+            th.center Rate
+            th.center Amount
+            th.center GST%
+        tbody
+          each item, index in model.items
+            tr
+              td.center #{index + 1}
+              td #{item.itemName}
+                if item.description
+                  br
+                  small #{item.description}
+              td.center #{item.hsnCode || '90215'}
+              td.center #{item.batch || ''}
+              td.center #{item.quantity}
+              td.right #{moneyFormatter({amount: item.price, currency: false})}
+              td.right #{moneyFormatter({amount: item.total, currency: false})}
+              td.center #{item.gstRate || '5'}
+
+      // Summary Section
+      .clearfix
+      .summary-section
+        table.summary-table
+          tr
+            td.label Sub Total
+            td.amount #{moneyFormatter({amount: model.subTotal, currency: false})}
+          tr
+            td.label CGST
+            td.amount #{moneyFormatter({amount: model.cgstAmount || (model.taxTotal / 2), currency: false})}
+          tr
+            td.label SGST  
+            td.amount #{moneyFormatter({amount: model.sgstAmount || (model.taxTotal / 2), currency: false})}
+          tr.total-row
+            td.label Grand Total
+            td.amount #{moneyFormatter({amount: model.total, currency: false})}
+
+      .clearfix
+
+      // Amount in Words
+      .amount-words
+        | Rs. (in words) : #{model.totalInWords || 'Amount in Words'}
+
+      // GST Summary
+      .section-title Ratewise Summary :
+      table.items-table(style="width: 60%; margin-bottom: 10px;")
+        thead
+          tr
+            th Per %
+            th Taxable Value
+            th CGST Amount
+            th SGST Amount
+        tbody
+          tr
+            td.center #{model.gstRate || '5'} %
+            td.right #{moneyFormatter({amount: model.subTotal, currency: false})}
+            td.right #{moneyFormatter({amount: model.cgstAmount || (model.taxTotal / 2), currency: false})}
+            td.right #{moneyFormatter({amount: model.sgstAmount || (model.taxTotal / 2), currency: false})}
+
+      .clearfix
+
+      // Additional Information
+      .two-column
+        .column
+          .info-row
+            .info-label D.L. No.:
+            .info-value #{settings.dlNumber || 'GJ-BHV-223311'}
+          .info-row
+            .info-label GSTIN No.:
+            .info-value #{settings.gstinNumber || '24AFAFS1113F1ZO'}
+          .info-row
+            .info-label Total GST :
+            .info-value #{model.taxInWords || 'Tax Amount in Words'}
+
+        .column
+          .info-row
+            .info-label Taxable Amount
+            .info-value #{moneyFormatter({amount: model.subTotal, currency: false})}
+
+      // Terms and Conditions
+      .terms-section
+        .terms-title Terms & Condition :
+        ol.terms-list
+          li Goods Once Sold Will Not Be Taken Back.
+          li Interest @21% Will be charged on all unpaid bill after due date.
+          li We are not responsible for any breakage, theft, damage.
+          li Payment to be made within 45 days.
+          li Subject to BHAVNAGAR Jurisdiction. E.&O.E
+          li This is Computer generated Invoice, So signature not required.
+
+      // Footer Section
+      .footer-section
+        .bank-details
+          div
+            strong Bank Name : 
+            | #{settings.bankName || 'HDFC BANK'}
+          div
+            strong Bank A/c. No. : 
+            | #{settings.bankAccount || '99977777772023'}
+          div
+            strong IFSC Code : 
+            | #{settings.ifscCode || 'HDFC0008312'}
+
+        .signature-section
+          div For, #{settings.company_name || 'SHASHWAT IMPLANT AND SURGICAL CARE'}
+          br
+          br
+          br
+          div (Authorised Signatory)
+
+      // Page Information
+      .page-info
+        | PAGE NO. : 1

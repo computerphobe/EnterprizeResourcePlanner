@@ -3,6 +3,9 @@ const Admin = require('@/models/coreModels/Admin');
 const Inventory = require('@/models/appModels/Inventory');
 const Return = require('@/models/appModels/Returns'); // Fixed: Use singular "Return" to match model name
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
+const { generatePdf } = require('@/controllers/pdfController');
 
 console.log("order controller loaded");
 
@@ -12,8 +15,12 @@ const delivererOrders = async (req, res) => {
     const delivererId = req.user.id;
     console.log('Fetching current deliveries for deliverer:', delivererId);
 
-    const orders = await Order.find({ delivererId, status: { $in: ['pending', 'processing', 'picked_up'] } })
-      .populate('doctorId', 'name role email')
+    // Include completed orders so deliverers can see return information
+    const orders = await Order.find({ 
+      delivererId, 
+      status: { $in: ['pending', 'processing', 'picked_up', 'completed'] } 
+    })
+      .populate('doctorId', 'name role email hospitalName')
       .populate('delivererId', 'name role email')
       .populate({
         path: 'items.inventoryItem',
@@ -23,7 +30,7 @@ const delivererOrders = async (req, res) => {
         path: 'items.substitutions.returnId',
         populate: {
           path: 'originalItemId',
-          select: 'itemName category batchNumber expiryDate'
+          select: 'itemName category batchNumber expiryDate price'
         }
       })
       .populate('items.substitutions.substitutedBy', 'name')
@@ -31,9 +38,16 @@ const delivererOrders = async (req, res) => {
 
     console.log('Current deliveries:', orders.length);
     
-    // Add substitution summary for deliverers
-    const ordersWithSubstitutionDetails = orders.map(order => {
+    // Add substitution summary and return information for deliverers
+    const ordersWithEnhancedDetails = await Promise.all(orders.map(async (order) => {
       const orderObj = order.toObject();
+      
+      // Ensure hospitalName is set properly - use fallback logic
+      if (!orderObj.hospitalName && orderObj.doctorId?.hospitalName) {
+        orderObj.hospitalName = orderObj.doctorId.hospitalName;
+      } else if (!orderObj.hospitalName) {
+        orderObj.hospitalName = 'Unknown Hospital';
+      }
       
       // Add substitution counts and details
       orderObj.substitutionSummary = {
@@ -42,7 +56,17 @@ const delivererOrders = async (req, res) => {
         details: []
       };
 
-      orderObj.items.forEach(item => {
+      // Add return information
+      let totalOriginalQuantity = 0;
+      let totalReturnedQuantity = 0;
+      let totalReturnedValue = 0;
+      let itemsWithReturns = 0;
+      const returnDetails = [];
+
+      for (const item of orderObj.items) {
+        totalOriginalQuantity += item.quantity;
+
+        // Handle substitutions
         if (item.substitutions && item.substitutions.length > 0) {
           orderObj.substitutionSummary.itemsWithSubstitutions++;
           orderObj.substitutionSummary.totalSubstitutions += item.substitutions.length;
@@ -57,12 +81,59 @@ const delivererOrders = async (req, res) => {
             });
           });
         }
-      });
+
+        // Find returns for this item
+        if (item.inventoryItem && item.inventoryItem._id) {
+          const returnedItems = await Return.find({
+            originalItemId: item.inventoryItem._id,
+            returnOrder: order._id,
+            status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
+          });
+
+          const itemReturnedQuantity = returnedItems.reduce((sum, returnItem) => {
+            return sum + (returnItem.returnedQuantity || 0);
+          }, 0);
+
+          if (itemReturnedQuantity > 0) {
+            itemsWithReturns++;
+            totalReturnedQuantity += itemReturnedQuantity;
+            
+            const itemPrice = item.price || item.inventoryItem.price || 0;
+            const itemReturnedValue = itemReturnedQuantity * itemPrice;
+            totalReturnedValue += itemReturnedValue;
+
+            returnDetails.push({
+              itemName: item.inventoryItem.itemName,
+              originalQuantity: item.quantity,
+              returnedQuantity: itemReturnedQuantity,
+              itemPrice: itemPrice,
+              returnedValue: itemReturnedValue,
+              returns: returnedItems.map(ret => ({
+                quantity: ret.returnedQuantity,
+                status: ret.status,
+                reason: ret.reason,
+                returnedAt: ret.returnedAt
+              }))
+            });
+          }
+        }
+      }
+
+      // Add return information to order object
+      orderObj.returnInfo = {
+        hasReturns: itemsWithReturns > 0,
+        totalItems: orderObj.items.length,
+        itemsWithReturns,
+        totalOriginalQuantity,
+        totalReturnedQuantity,
+        totalReturnedValue,
+        returnDetails
+      };
 
       return orderObj;
-    });
+    }));
 
-    res.json({ success: true, result: ordersWithSubstitutionDetails });
+    res.json({ success: true, result: ordersWithEnhancedDetails });
   } catch (error) {
     console.error('Error fetching current deliveries:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -96,7 +167,7 @@ const ownerOrders = async (req, res) => {
         path: 'items.substitutions.returnId',
         populate: {
           path: 'originalItemId',
-          select: 'itemName category batchNumber expiryDate'
+          select: 'itemName category batchNumber expiryDate price'
         }
       })
       .populate('items.substitutions.substitutedBy', 'name role email');
@@ -106,6 +177,16 @@ const ownerOrders = async (req, res) => {
     // Add some additional information/processing if needed
     const enhancedOrders = orders.map(order => {
       const orderObj = order.toObject();
+      
+      // Ensure hospitalName is properly set - use fallback logic
+      if (!orderObj.hospitalName && orderObj.doctorId?.hospitalName) {
+        orderObj.hospitalName = orderObj.doctorId.hospitalName;
+      } else if (!orderObj.hospitalName && orderObj.doctorId?.name) {
+        // If doctor doesn't have hospitalName, use doctor's name as fallback
+        orderObj.hospitalName = orderObj.doctorId.name;
+      } else if (!orderObj.hospitalName) {
+        orderObj.hospitalName = 'Unknown Hospital';
+      }
       
       // Add complete item details summary
       if (orderObj.items && orderObj.items.length > 0) {
@@ -952,6 +1033,17 @@ const createHospitalOrder = async (req, res) => {
     const orderCount = await Order.countDocuments();
     const orderNumber = `DO${String(orderCount + 1).padStart(6, '0')}`;
     
+    // Get hospital name - for doctors, use their hospitalName field; for hospitals, use their name
+    let hospitalName = 'Unknown Hospital';
+    if (req.user.role === 'doctor' && req.user.hospitalName) {
+      hospitalName = req.user.hospitalName;
+    } else if (req.user.role === 'hospital') {
+      hospitalName = req.user.name || 'Unknown Hospital';
+    } else {
+      // Try to get from user name as fallback
+      hospitalName = req.user.name || 'Unknown Hospital';
+    }
+    
     const order = new Order({
       orderNumber, // Set explicitly to avoid the error
       items,
@@ -960,7 +1052,7 @@ const createHospitalOrder = async (req, res) => {
       orderType: 'doctor',
       doctorId: hospitalId,
       doctorName: req.user.name,
-      hospitalName: req.user.hospitalName,
+      hospitalName: hospitalName,
       createdBy: hospitalId
     });
 
@@ -1033,7 +1125,24 @@ const doctorOrders = async (req, res) => {
       });
 
     console.log('Doctor orders found:', orders.length);
-    res.json({ success: true, orders: orders });
+    
+    // Enhance orders with hospitalName fallback
+    const enhancedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Ensure hospitalName is properly set
+      if (!orderObj.hospitalName && req.user.hospitalName) {
+        orderObj.hospitalName = req.user.hospitalName;
+      } else if (!orderObj.hospitalName && req.user.role === 'hospital') {
+        orderObj.hospitalName = req.user.name || 'Unknown Hospital';
+      } else if (!orderObj.hospitalName) {
+        orderObj.hospitalName = 'Unknown Hospital';
+      }
+      
+      return orderObj;
+    });
+    
+    res.json({ success: true, orders: enhancedOrders });
   } catch (error) {
     console.error('Error fetching doctor orders:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -1055,7 +1164,10 @@ const createDoctorOrder = async (req, res) => {
       });
     }
 
-    // Validate inventoryItem IDs and purchase types
+    // Validate inventoryItem IDs and purchase types, and fetch actual prices
+    const processedItems = [];
+    let calculatedTotalAmount = 0;
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (!mongoose.Types.ObjectId.isValid(item.inventoryItem)) {
@@ -1078,33 +1190,62 @@ const createDoctorOrder = async (req, res) => {
           message: `Invalid quantity for item ${i + 1}. Must be greater than 0`
         });
       }
+
+      // Fetch the inventory item to get the actual price
+      const inventoryItem = await Inventory.findById(item.inventoryItem);
+      if (!inventoryItem) {
+        return res.status(400).json({
+          success: false,
+          message: `Inventory item not found for item ${i + 1}`
+        });
+      }
+
+      const itemPrice = inventoryItem.price || 0;
+      const itemTotal = itemPrice * item.quantity;
+      calculatedTotalAmount += itemTotal;
+
+      processedItems.push({
+        inventoryItem: item.inventoryItem,
+        quantity: item.quantity,
+        price: itemTotal, // Store total price for the quantity
+        purchaseType: item.purchaseType,
+        notes: item.notes || ''
+      });
+
+      console.log(`Item ${i + 1}: ${inventoryItem.itemName} - Unit: ₹${itemPrice}, Qty: ${item.quantity}, Total: ₹${itemTotal}`);
     }
+
+    console.log(`Calculated total amount: ₹${calculatedTotalAmount}`);
 
     // Create the order with orderNumber
     const orderCount = await Order.countDocuments();
     const orderNumber = `DO${String(orderCount + 1).padStart(6, '0')}`;
     
+    // Get hospital name properly
+    let hospitalName = 'Unknown Hospital';
+    if (req.user.role === 'doctor' && req.user.hospitalName) {
+      hospitalName = req.user.hospitalName;
+    } else if (req.user.role === 'hospital') {
+      hospitalName = req.user.name || 'Unknown Hospital';
+    } else {
+      hospitalName = req.user.name || 'Unknown Hospital';
+    }
+    
     const order = new Order({
       orderNumber,
-      items: items.map(item => ({
-        inventoryItem: item.inventoryItem,
-        quantity: item.quantity,
-        price: item.price || 0,
-        purchaseType: item.purchaseType,
-        notes: item.notes || ''
-      })),
-      totalAmount: totalAmount || 0,
+      items: processedItems,
+      totalAmount: calculatedTotalAmount,
       status: 'pending',
       orderType: 'doctor',
       doctorId: doctorId,
       doctorName: req.user.name || 'Unknown Doctor',
-      hospitalName: req.user.hospitalName || 'Unknown Hospital',
+      hospitalName: hospitalName,
       createdBy: doctorId,
       notes: notes || orderNotes || ''
     });
 
     await order.save();
-    console.log('Doctor order created successfully:', order.orderNumber);
+    console.log('Doctor order created successfully:', order.orderNumber, `Total: ₹${calculatedTotalAmount}`);
     
     // Populate the created order before sending response
     const populatedOrder = await Order.findById(order._id)
@@ -1196,6 +1337,93 @@ const getAllCompletedOrdersForReturns = async (req, res) => {
   }
 };
 
+// PDF generation for orders
+const generateOrderPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Find the order with populated data
+    const order = await Order.findById(id)
+      .populate('doctorId', 'name role email hospitalName')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber'
+      });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Authorization check
+    if (userRole === 'doctor' && order.doctorId._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    if (userRole === 'deliverer' && order.delivererId?._id.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Prepare order data for PDF
+    const orderData = {
+      ...order.toObject(),
+      hospitalName: order.doctorId?.hospitalName || 'Unknown Hospital'
+    };
+
+    // Generate unique filename
+    const filename = `order_${order.orderNumber}_${Date.now()}.pdf`;
+    const targetLocation = path.join(process.cwd(), 'public', 'pdf', filename);
+
+    // Ensure the public/pdf directory exists
+    const pdfDir = path.dirname(targetLocation);
+    if (!fs.existsSync(pdfDir)) {
+      fs.mkdirSync(pdfDir, { recursive: true });
+    }
+
+    // Generate PDF
+    await generatePdf(
+      'order',
+      {
+        filename,
+        format: 'A4',
+        targetLocation
+      },
+      orderData,
+      () => {
+        // PDF generated successfully
+        const fileUrl = `/pdf/${filename}`;
+        res.json({
+          success: true,
+          result: {
+            url: fileUrl,
+            filename
+          },
+          message: 'Order PDF generated successfully'
+        });
+      }
+    );
+
+  } catch (error) {
+    console.error('Error generating order PDF:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating PDF',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {  assignDeliverer,
   delivererOrders,  ownerOrders,
   getPendingInvoices,
@@ -1215,4 +1443,5 @@ module.exports = {  assignDeliverer,
   createDoctorOrder,
   getOrderById, // Expose the new fallback endpoint
   getAllCompletedOrdersForReturns, // NEW: Endpoint to get all completed orders for return collection
+  generateOrderPdf // NEW: PDF generation endpoint
 };

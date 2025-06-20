@@ -56,26 +56,8 @@ const Orders = () => {
         headers: {
           Authorization: `Bearer ${token}`
         }
-      });
-      const data = await response.json(); if (data.success && Array.isArray(data.result)) {
+      });      const data = await response.json(); if (data.success && Array.isArray(data.result)) {
         console.log('Inventory items loaded successfully, count:', data.result.length);
-        if (data.result.length > 0) {
-          console.log('First inventory item sample:', JSON.stringify(data.result[0], null, 2));
-          // Log all property names to debug
-          console.log('First item properties:', Object.keys(data.result[0]));
-
-          // Create a better report on item fields
-          const firstItem = data.result[0];
-          const fieldReport = {};
-          for (const key in firstItem) {
-            fieldReport[key] = {
-              type: typeof firstItem[key],
-              value: firstItem[key],
-              usableForDisplay: typeof firstItem[key] === 'string' || typeof firstItem[key] === 'number'
-            };
-          }
-          console.log('Field report for dropdown display options:', fieldReport);
-        }
         setInventoryItems(data.result);
       } else {
         console.warn('Inventory items not returned as expected:', data);
@@ -365,17 +347,7 @@ const Orders = () => {
         onOk={handleModalSubmit}
         onCancel={handleModalCancel}
         width={900}
-        destroyOnClose={true}
-        footer={[
-          <Button key="debug" onClick={() => {
-            console.log('Current inventory items:', inventoryItems);
-            if (inventoryItems.length > 0) {
-              console.log('First item:', inventoryItems[0]);
-              alert(`First inventory item: ${JSON.stringify(inventoryItems[0], null, 2)}`);
-            }
-          }}>
-            Debug
-          </Button>,
+        destroyOnClose={true}        footer={[
           <Button key="reset" onClick={() => {
             form.resetFields();
             // Reset with at least one empty item

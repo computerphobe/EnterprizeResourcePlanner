@@ -8,7 +8,7 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 
 
-const pugFiles = ['invoice', 'offer', 'quote', 'payment', 'purchase'];
+const pugFiles = ['invoice', 'offer', 'quote', 'payment', 'purchase', 'order'];
 
 
 require('dotenv').config({ path: '.env' });

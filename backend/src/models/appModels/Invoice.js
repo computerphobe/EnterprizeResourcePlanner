@@ -23,13 +23,17 @@ const invoiceSchema = new mongoose.Schema({
   recurring: {
     type: String,
     enum: ['daily', 'weekly', 'monthly', 'annually', 'quarter'],
-  },
-  client: {
+  },  client: {
   type: mongoose.Schema.Types.ObjectId,
   ref: 'Client',
   required: true,
   autopopulate: true,
 },
+  patientName: {
+    type: String,
+    trim: true,
+    required: false // Optional field for orders from doctors/hospitals
+  },
   date: {
     type: Date,
     required: true,

@@ -90,10 +90,43 @@ const History = () => {
   const handleViewDetails = (record, type) => {
     openDetailsModal(record, type);
   };
+  const handleGeneratePDF = async (record, type) => {
+    try {
+      let endpoint = '';
+      if (type === 'order') {
+        endpoint = `${import.meta.env.VITE_BACKEND_SERVER}api/order/${record._id}/pdf`;
+      } else if (type === 'invoice') {
+        endpoint = `${import.meta.env.VITE_BACKEND_SERVER}api/invoice/${record._id}/pdf`;
+      }
 
-  const handleGeneratePDF = (record, type) => {
-    // TODO: Implement PDF generation
-    console.log('Generate PDF:', record, type);
+      if (!endpoint) {
+        message.error('PDF generation not supported for this type');
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.result.url) {
+          // Open PDF in new tab
+          window.open(`${import.meta.env.VITE_BACKEND_SERVER}${data.result.url}`, '_blank');
+        } else {
+          message.error('Failed to generate PDF');
+        }
+      } else {
+        message.error('Error generating PDF');
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      message.error('Error generating PDF');
+    }
   };
 
   const orderColumns = [

@@ -31,12 +31,17 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'Admin', // References the user account (hospital/doctor)
     required: false
-  },
-  userRole: {
+  },  userRole: {
     type: String,
     enum: ['hospital', 'doctor', 'distributor', null],
     required: false
-  },  createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
+  },
+  hospitalName: {
+    type: String,
+    trim: true,
+    required: false // Only for doctors
+  },
+  createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
     type: Date,

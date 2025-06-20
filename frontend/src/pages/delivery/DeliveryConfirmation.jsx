@@ -144,13 +144,12 @@ const DeliveryConfirmation = () => {
   // Open return collection modal
   const openReturnModal = (order) => {
     setSelectedOrderForReturns(order);
-    
-    // Initialize return items from order items
+      // Initialize return items from order items
     const initialReturnItems = order.items.map(item => ({
       _id: item._id,
       inventoryItem: item.inventoryItem,
       deliveredQuantity: item.quantity,
-      returnQuantity: 0,
+      returnQuantity: 1, // Default to 1 instead of 0
       reason: '',
       selected: false
     }));
@@ -168,16 +167,17 @@ const DeliveryConfirmation = () => {
     setReturnPhoto(null);
     setCustomerSignature(null);
     returnForm.resetFields();
-  };
-
-  // Handle return item selection
+  };  // Handle return item selection
   const handleReturnItemChange = (itemId, field, value) => {
     setReturnItems(prev => prev.map(item => 
       item._id === itemId 
-        ? { ...item, [field]: value }
+        ? { 
+            ...item, 
+            [field]: field === 'returnQuantity' ? Math.max(1, parseInt(value) || 1) : value 
+          }
         : item
     ));
-  };  // Submit return collection
+  };// Submit return collection
   const submitReturnCollection = async (values) => {
     console.log('=== FRONTEND: Submit return collection called ===');
     console.log('Values received:', values);
@@ -189,14 +189,30 @@ const DeliveryConfirmation = () => {
       console.log('Return items:', returnItems);
       console.log('Return photo exists:', !!returnPhoto);
       console.log('Customer signature exists:', !!customerSignature);
-      
-      const selectedReturns = returnItems.filter(item => item.selected && item.returnQuantity > 0);
+        const selectedReturns = returnItems.filter(item => item.selected && item.returnQuantity > 0);
       console.log('Selected returns:', selectedReturns);
       
       if (selectedReturns.length === 0) {
-        messageApi.warning('Please select at least one item to return');
+        messageApi.warning('Please select at least one item with quantity greater than 0 for return');
         return;
       }
+
+      // Additional validation to ensure all selected items have valid quantities
+      const invalidItems = selectedReturns.filter(item => !item.returnQuantity || item.returnQuantity <= 0);
+      if (invalidItems.length > 0) {
+        messageApi.error('All selected return items must have a quantity greater than 0');
+        return;
+      }
+
+      // Debug log to verify quantities
+      selectedReturns.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          id: item._id,
+          name: item.inventoryItem?.itemName,
+          returnQuantity: item.returnQuantity,
+          type: typeof item.returnQuantity
+        });
+      });
 
       if (!returnPhoto) {
         messageApi.warning('Please capture a photo of the returned items');
@@ -214,10 +230,9 @@ const DeliveryConfirmation = () => {
         returnType: 'doctor', // Assuming this is a doctor return from delivery
         doctorId: selectedOrderForReturns?.doctorId?._id,
         doctorName: selectedOrderForReturns?.doctorName,
-        hospitalName: selectedOrderForReturns?.hospitalName,
-        items: selectedReturns.map(item => ({
+        hospitalName: selectedOrderForReturns?.hospitalName,        items: selectedReturns.map(item => ({
           originalItemId: item.inventoryItem?._id,
-          returnedQuantity: item.returnQuantity,
+          returnedQuantity: Math.max(1, parseInt(item.returnQuantity) || 1), // Ensure it's at least 1
           reason: item.reason || 'Customer return during delivery'
         })),
         photo: returnPhoto,
@@ -321,6 +336,12 @@ const DeliveryConfirmation = () => {
       dataIndex: 'hospitalName',
       key: 'hospitalName',
       render: (hospital) => hospital || '-',
+    },
+    {
+      title: 'Patient Name',
+      dataIndex: 'patientName',
+      key: 'patientName',
+      render: (patientName) => patientName || '-',
     },
     {
       title: 'Delivered At',
@@ -444,16 +465,16 @@ const DeliveryConfirmation = () => {
                         </Col>
                         <Col span={6}>
                           <div>
-                            <Text>Return Quantity:</Text>
-                            <InputNumber
-                              min={0}
+                            <Text>Return Quantity:</Text>                            <InputNumber
+                              min={1}
                               max={item.deliveredQuantity}
                               value={item.returnQuantity}
                               onChange={(value) => 
-                                handleReturnItemChange(item._id, 'returnQuantity', value || 0)
+                                handleReturnItemChange(item._id, 'returnQuantity', value >= 1 ? value : 1)
                               }
                               disabled={!item.selected}
                               style={{ width: '100%' }}
+                              placeholder="Enter quantity"
                             />
                           </div>
                         </Col>

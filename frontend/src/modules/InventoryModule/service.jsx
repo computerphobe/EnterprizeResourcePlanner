@@ -25,7 +25,7 @@ export const getinventory = async (params = {}) => {
     includeTokenManually();
     const response = await axios.get(`${API_BASE_URL}/inventory/list`);
     
-    console.log('Fetched Inventory Direct:', response.data); // ✅ Debug log
+    console.log('Fetched Inventory Direct:', response.data);
     if (response.data.success && Array.isArray(response.data.result)) {
       return response.data.result.map(item => ({
         ...item,
@@ -43,7 +43,7 @@ export const getinventory = async (params = {}) => {
 export const listInventory = async () => {
   try {
     const response = await request.list({ entity });
-    console.log('Fetched Inventory with request:', response); // ✅ Debug log
+    console.log('Fetched Inventory with request:', response);
     return response;
   } catch (error) {
     console.error('Error fetching inventory (request):', error);
@@ -82,7 +82,7 @@ export const createinventory = async (data) => {
       jsonData: processedData,
       options: { headers: getAuthHeaders() },
     });
-    console.log('Response after creation:', response); // ✅ Debug log
+    console.log('Response after creation:', response);
     return response.result;
   } catch (error) {
     console.error('Error creating inventory:', error);

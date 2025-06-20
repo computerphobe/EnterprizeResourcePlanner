@@ -415,9 +415,7 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                   </Descriptions>
                 </Col>
               </Row>
-            </Card>
-
-            {/* Order Items */}
+            </Card>            {/* Order Items */}
             <Card title="Order Items" size="small" style={{ marginBottom: 16 }}>
               <List
                 itemLayout="horizontal"
@@ -462,15 +460,41 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                       }
                       description={
                         <div>
-                          <div>
-                            <strong>Quantity:</strong> {item.quantity} | 
-                            <strong> Price:</strong> ₹{item.price?.toFixed(2) || '0.00'}
-                          </div>
-                          {item.inventoryItem?.category && (
-                            <div><strong>Category:</strong> {item.inventoryItem.category}</div>
-                          )}
+                          <Row gutter={16}>
+                            <Col span={6}>
+                              <Text strong>Quantity:</Text> {item.quantity}
+                            </Col>
+                            <Col span={6}>
+                              <Text strong>Unit Price:</Text> ₹{((item.price || 0) / (item.quantity || 1)).toFixed(2)}
+                            </Col>
+                            <Col span={6}>
+                              <Text strong>Total:</Text> ₹{(item.price || 0).toFixed(2)}
+                            </Col>
+                            <Col span={6}>
+                              {item.inventoryItem?.category && (
+                                <div><Text strong>Category:</Text> {item.inventoryItem.category}</div>
+                              )}
+                            </Col>
+                          </Row>
                           {item.inventoryItem?.batchNumber && (
-                            <div><strong>Batch:</strong> {item.inventoryItem.batchNumber}</div>
+                            <div style={{ marginTop: 4 }}>
+                              <Text strong>Batch:</Text> {item.inventoryItem.batchNumber}
+                            </div>
+                          )}
+                          {item.substitutions && item.substitutions.length > 0 && (
+                            <div style={{ marginTop: 8, padding: 8, backgroundColor: '#fff7e6', borderRadius: 4 }}>
+                              <Text strong style={{ color: '#fa8c16' }}>Substitutions Applied:</Text>
+                              {item.substitutions.map((sub, subIndex) => (
+                                <div key={subIndex} style={{ marginTop: 4, fontSize: '12px' }}>
+                                  <Tag size="small" color="orange">
+                                    {sub.quantitySubstituted} units substituted
+                                  </Tag>
+                                  <Text type="secondary">
+                                    by {sub.substitutedBy?.name || 'Unknown'} on {new Date(sub.substitutedAt).toLocaleDateString()}
+                                  </Text>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       }
@@ -478,9 +502,134 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                   </List.Item>
                 )}
               />
-            </Card>
+            </Card>{/* Returns Information */}
+            {selectedOrder.returnInfo?.hasReturns && (
+              <Card 
+                title={
+                  <div>
+                    <InfoCircleOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                    Returns Information
+                    <Badge 
+                      count={selectedOrder.returnInfo.itemsWithReturns} 
+                      style={{ backgroundColor: '#1890ff', marginLeft: 8 }} 
+                    />
+                  </div>
+                } 
+                size="small" 
+                style={{ marginBottom: 16 }}
+              >
+                <Row gutter={16} style={{ marginBottom: 16 }}>
+                  <Col span={6}>
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="Items with Returns">
+                        <Tag color="orange">{selectedOrder.returnInfo.itemsWithReturns}</Tag> / {selectedOrder.returnInfo.totalItems}
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </Col>
+                  <Col span={6}>
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="Total Returned Qty">
+                        <Tag color="red">{selectedOrder.returnInfo.totalReturnedQuantity}</Tag>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </Col>
+                  <Col span={6}>
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="Return Rate">
+                        <Tag color="purple">
+                          {((selectedOrder.returnInfo.totalReturnedQuantity / selectedOrder.returnInfo.totalOriginalQuantity) * 100).toFixed(1)}%
+                        </Tag>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </Col>
+                  <Col span={6}>
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="Returned Value">
+                        <Tag color="green">₹{selectedOrder.returnInfo.totalReturnedValue?.toFixed(2) || '0.00'}</Tag>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </Col>
+                </Row>
 
-            {/* Substitution Details */}
+                {/* Detailed Return Items */}
+                {selectedOrder.returnInfo.returnDetails && selectedOrder.returnInfo.returnDetails.length > 0 && (
+                  <div>
+                    <Divider orientation="left" orientationMargin="0">
+                      <Text strong>Returned Items Details</Text>
+                    </Divider>
+                    <List
+                      itemLayout="horizontal"
+                      dataSource={selectedOrder.returnInfo.returnDetails}
+                      renderItem={(returnDetail, index) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={
+                              <div 
+                                style={{ 
+                                  width: 40, 
+                                  height: 40, 
+                                  backgroundColor: '#fff1f0', 
+                                  borderRadius: '50%', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center',
+                                  border: '2px solid #ff4d4f'
+                                }}
+                              >
+                                <Text style={{ color: '#ff4d4f', fontWeight: 'bold' }}>
+                                  {index + 1}
+                                </Text>
+                              </div>
+                            }
+                            title={
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Text strong>{returnDetail.itemName}</Text>
+                                <Tag color="orange" size="small">
+                                  {returnDetail.returnedQuantity}/{returnDetail.originalQuantity} returned
+                                </Tag>
+                              </div>
+                            }
+                            description={
+                              <div>
+                                <Row gutter={16}>
+                                  <Col span={8}>
+                                    <Text type="secondary">Unit Price: </Text>
+                                    <Text strong>₹{returnDetail.itemPrice?.toFixed(2) || '0.00'}</Text>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Text type="secondary">Returned Value: </Text>
+                                    <Text strong style={{ color: '#ff4d4f' }}>
+                                      ₹{returnDetail.returnedValue?.toFixed(2) || '0.00'}
+                                    </Text>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Text type="secondary">Return Rate: </Text>
+                                    <Text strong>
+                                      {((returnDetail.returnedQuantity / returnDetail.originalQuantity) * 100).toFixed(1)}%
+                                    </Text>
+                                  </Col>
+                                </Row>
+                                {returnDetail.returns && returnDetail.returns.length > 0 && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                      Return History: {returnDetail.returns.map((ret, idx) => (
+                                        <Tag key={idx} size="small" color="volcano" style={{ margin: '2px' }}>
+                                          {ret.quantity} × {ret.status}
+                                        </Tag>
+                                      ))}
+                                    </Text>
+                                  </div>
+                                )}
+                              </div>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                )}
+              </Card>
+            )}            {/* Substitution Details */}
             {selectedOrder.hasSubstitutions && selectedOrder.substitutionSummary && (
               <Card 
                 title={
@@ -494,6 +643,7 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                   </div>
                 } 
                 size="small"
+                style={{ marginBottom: 16 }}
               >
                 <Alert
                   message="Items Modified"
@@ -504,7 +654,7 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                 />
 
                 <List
-                  header={<div><strong>Substitution History (Read-Only)</strong></div>}
+                  header={<div><strong>Substitution History</strong></div>}
                   itemLayout="horizontal"
                   dataSource={selectedOrder.substitutionSummary.details || []}
                   renderItem={(detail, index) => (
@@ -528,35 +678,32 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
                         }
                         title={
                           <div>
-                            <span style={{ color: '#f50' }}>Original:</span> {detail.originalItem}
-                            <span style={{ margin: '0 8px' }}>→</span>
-                            <span style={{ color: '#52c41a' }}>Replaced with:</span> {detail.returnedItem}
+                            <Text strong>{detail.originalItem}</Text>
+                            <Tag color="orange" size="small" style={{ marginLeft: 8 }}>
+                              {detail.quantitySubstituted} units substituted
+                            </Tag>
                           </div>
                         }
                         description={
                           <div>
-                            <div>
-                              <strong>Quantity Substituted:</strong> {detail.quantitySubstituted}
-                            </div>
-                            <div>
-                              <strong>Substituted On:</strong> {new Date(detail.substitutedAt).toLocaleString()}
-                            </div>
-                            <div>
-                              <strong>Substituted By:</strong> {detail.substitutedBy}
-                            </div>
-                          </div>
-                        }
+                            <Row gutter={16}>
+                              <Col span={8}>
+                                <Text type="secondary">Returned Item: </Text>
+                                <Text>{detail.returnedItem}</Text>
+                              </Col>
+                              <Col span={8}>
+                                <Text type="secondary">Substituted by: </Text>
+                                <Text>{detail.substitutedBy}</Text>
+                              </Col>
+                              <Col span={8}>
+                                <Text type="secondary">Date: </Text>
+                                <Text>{new Date(detail.substitutedAt).toLocaleDateString()}</Text>
+                              </Col>
+                            </Row>
+                          </div>                        }
                       />
                     </List.Item>
                   )}
-                />
-
-                <Divider />
-                <Alert
-                  message="Note for Deliverer"
-                  description="These substitutions were made by the admin team to ensure product availability. Please verify the substituted items match the delivery requirements before delivery."
-                  type="warning"
-                  showIcon
                 />
               </Card>
             )}
