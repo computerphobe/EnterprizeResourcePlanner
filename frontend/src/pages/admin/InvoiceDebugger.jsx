@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Tabs, Tag, Button, Space, Typography, message, Modal, Descriptions, Divider, Card, List, Row, Col } from 'antd';
-import { EyeOutlined, FilePdfOutlined, DownloadOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Input, Button, Card, Table, Tabs, Tag, Space, Typography, message, Modal, Descriptions, Divider, List, Row, Col } from 'antd';
+import { SearchOutlined, EyeOutlined, FilePdfOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
 
 const { Title, Text } = Typography;
 
-const SalesBill = () => {
-  const [salesBills, setSalesBills] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedBill, setSelectedBill] = useState(null);
+const InvoiceDebugger = () => {
+  const [loading, setLoading] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [invoices, setInvoices] = useState([]);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
-  useEffect(() => {
-    fetchSalesBills();
-  }, [token]);
-  const fetchSalesBills = async () => {
-    if (!token) return setLoading(false);
-
+  const handleSearch = async () => {
+    if (!clientId.trim()) {
+      return message.error('Please enter a client ID');
+    }
+    
+    setLoading(true);
     try {
-      const response = await fetch('/api/doctor/sales-bills', {
+      const response = await fetch(`/api/admin/client-invoices/${clientId.trim()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -29,41 +30,38 @@ const SalesBill = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch sales bills');
+        throw new Error('Failed to fetch invoices');
       }
-        const data = await response.json();
+      
+      const data = await response.json();
       if (data.success) {
-        setSalesBills(data.result || []);
-        
-        // Show notification if a new client was created
-        if (data.clientInfo && data.clientInfo.isNewClient) {
-          message.info(`Welcome! A new client record has been created for ${data.clientInfo.name}`);
-        }
+        setInvoices(data.result || []);
+        message.success(`Found ${data.result?.length || 0} invoices for client ID: ${clientId}`);
       } else {
-        throw new Error(data.message || 'Failed to fetch sales bills');
+        throw new Error(data.message || 'Failed to fetch invoices');
       }
     } catch (error) {
-      message.error(error.message || 'Failed to fetch sales bills');
+      message.error(error.message || 'Failed to fetch invoices');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewDetails = (bill) => {
-    setSelectedBill(bill);
+  const handleViewDetails = (invoice) => {
+    setSelectedInvoice(invoice);
     setDetailsVisible(true);
   };
 
-  const handleGeneratePDF = (bill) => {
-    if (bill.pdf) {
-      window.open(`/api/pdf/${bill.pdf}`, '_blank');
+  const handleGeneratePDF = (invoice) => {
+    if (invoice.pdf) {
+      window.open(`/api/pdf/${invoice.pdf}`, '_blank');
     } else {
       message.warning('PDF not available for this invoice');
     }
   };
   
   const closeDetails = () => {
-    setSelectedBill(null);
+    setSelectedInvoice(null);
     setDetailsVisible(false);
   };
 
@@ -121,74 +119,65 @@ const SalesBill = () => {
     },
   ];
 
-  const paidBills = salesBills.filter(bill => bill.status === 'paid');
-  const pendingBills = salesBills.filter(bill => bill.status === 'pending');
-
-  const items = [
-    {
-      key: '1',
-      label: 'All Bills',
-      children: (
-        <Table
-          dataSource={salesBills}
-          columns={columns}
-          rowKey="_id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-        />
-      ),
-    },
-    {
-      key: '2',
-      label: 'Paid Bills',
-      children: (
-        <Table
-          dataSource={paidBills}
-          columns={columns}
-          rowKey="_id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-        />
-      ),
-    },
-    {
-      key: '3',
-      label: 'Pending Bills',
-      children: (
-        <Table
-          dataSource={pendingBills}
-          columns={columns}
-          rowKey="_id"
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-        />
-      ),
-    },
-  ];
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Sales Bills</Title>
+        <Title level={2}>Admin Invoice Debugger</Title>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <Tabs defaultActiveKey="1" items={items} />
-      </div>
+      <Card className="mb-4">
+        <div className="flex items-center">
+          <Input 
+            placeholder="Enter Client ID" 
+            value={clientId} 
+            onChange={e => setClientId(e.target.value)} 
+            style={{ width: '300px' }}
+          />
+          <Button 
+            type="primary" 
+            icon={<SearchOutlined />} 
+            onClick={handleSearch} 
+            loading={loading} 
+            style={{ marginLeft: '16px' }}
+          >
+            Search Invoices
+          </Button>
+        </div>
+      </Card>
+      
+      {invoices.length > 0 ? (
+        <div className="bg-white rounded-lg shadow p-6">
+          <Title level={4} className="mb-4">
+            Found {invoices.length} invoices for Client ID: {clientId}
+          </Title>
+          <Table
+            dataSource={invoices}
+            columns={columns}
+            rowKey="_id"
+            loading={loading}
+            pagination={{ pageSize: 10 }}
+          />
+        </div>
+      ) : loading ? null : (
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <Text>Enter a client ID and click Search to find invoices</Text>
+        </div>
+      )}
 
       {/* Invoice Details Modal */}
       <Modal
-        title={`Invoice Details - ${selectedBill?.billNumber || ''}`}
+        title={`Invoice Details - ${selectedInvoice?.billNumber || ''}`}
         open={detailsVisible}
         onCancel={closeDetails}
         footer={[
           <Button key="close" onClick={closeDetails}>
             Close
           </Button>,
-          selectedBill?.pdf && (
+          selectedInvoice?.pdf && (
             <Button 
               key="pdf" 
               type="primary" 
               icon={<DownloadOutlined />}
-              onClick={() => handleGeneratePDF(selectedBill)}
+              onClick={() => handleGeneratePDF(selectedInvoice)}
             >
               Download PDF
             </Button>
@@ -196,37 +185,37 @@ const SalesBill = () => {
         ]}
         width={800}
       >
-        {selectedBill && (
+        {selectedInvoice && (
           <div>
             <Card title="Invoice Information" size="small" style={{ marginBottom: 16 }}>
               <Row gutter={16}>
                 <Col span={12}>
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Invoice Number">
-                      <Text strong>{selectedBill.billNumber}</Text>
+                      <Text strong>{selectedInvoice.billNumber}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Date">
-                      {new Date(selectedBill.createdAt).toLocaleDateString()}
+                      {new Date(selectedInvoice.createdAt).toLocaleDateString()}
                     </Descriptions.Item>
                     <Descriptions.Item label="Due Date">
-                      {selectedBill.dueDate ? new Date(selectedBill.dueDate).toLocaleDateString() : 'N/A'}
+                      {selectedInvoice.dueDate ? new Date(selectedInvoice.dueDate).toLocaleDateString() : 'N/A'}
                     </Descriptions.Item>
                   </Descriptions>
                 </Col>
                 <Col span={12}>
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Status">
-                      <Tag color={selectedBill.status === 'paid' ? 'green' : 
-                              selectedBill.status === 'partially' ? 'blue' : 'orange'}>
-                        {selectedBill.status.toUpperCase()}
+                      <Tag color={selectedInvoice.status === 'paid' ? 'green' : 
+                              selectedInvoice.status === 'partially' ? 'blue' : 'orange'}>
+                        {selectedInvoice.status.toUpperCase()}
                       </Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="Total Amount">
-                      <Text strong>₹{selectedBill.totalAmount.toFixed(2)}</Text>
+                      <Text strong>₹{selectedInvoice.totalAmount.toFixed(2)}</Text>
                     </Descriptions.Item>
-                    {selectedBill.credit > 0 && (
+                    {selectedInvoice.credit > 0 && (
                       <Descriptions.Item label="Amount Paid">
-                        <Text type="success">₹{selectedBill.credit.toFixed(2)}</Text>
+                        <Text type="success">₹{selectedInvoice.credit.toFixed(2)}</Text>
                       </Descriptions.Item>
                     )}
                   </Descriptions>
@@ -234,10 +223,27 @@ const SalesBill = () => {
               </Row>
             </Card>
 
-            {selectedBill.items && selectedBill.items.length > 0 && (
+            <Card title="Client Information" size="small" style={{ marginBottom: 16 }}>
+              <Descriptions column={1} size="small">
+                <Descriptions.Item label="Client Name">
+                  {selectedInvoice.client?.name || 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Client ID">
+                  {selectedInvoice.client?._id || 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="User ID">
+                  {selectedInvoice.client?.userId || 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Email">
+                  {selectedInvoice.client?.email || 'N/A'}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+
+            {selectedInvoice.items && selectedInvoice.items.length > 0 && (
               <Card title="Invoice Items" size="small" style={{ marginBottom: 16 }}>
                 <List
-                  dataSource={selectedBill.items}
+                  dataSource={selectedInvoice.items}
                   renderItem={(item) => (
                     <List.Item>
                       <div style={{ width: '100%' }}>
@@ -267,23 +273,23 @@ const SalesBill = () => {
                     <div style={{ textAlign: 'right', paddingRight: '16px' }}>
                       <div>
                         <Text>Subtotal: </Text>
-                        <Text strong>₹{selectedBill.subTotal.toFixed(2)}</Text>
+                        <Text strong>₹{selectedInvoice.subTotal.toFixed(2)}</Text>
                       </div>
-                      {selectedBill.taxRate > 0 && (
+                      {selectedInvoice.taxRate > 0 && (
                         <div>
-                          <Text>Tax ({selectedBill.taxRate}%): </Text>
-                          <Text strong>₹{selectedBill.taxTotal.toFixed(2)}</Text>
+                          <Text>Tax ({selectedInvoice.taxRate}%): </Text>
+                          <Text strong>₹{selectedInvoice.taxTotal.toFixed(2)}</Text>
                         </div>
                       )}
-                      {selectedBill.discount > 0 && (
+                      {selectedInvoice.discount > 0 && (
                         <div>
                           <Text>Discount: </Text>
-                          <Text strong>₹{selectedBill.discount.toFixed(2)}</Text>
+                          <Text strong>₹{selectedInvoice.discount.toFixed(2)}</Text>
                         </div>
                       )}
                       <div style={{ marginTop: '8px' }}>
                         <Text strong>Total: </Text>
-                        <Text strong style={{ fontSize: '16px' }}>₹{selectedBill.totalAmount.toFixed(2)}</Text>
+                        <Text strong style={{ fontSize: '16px' }}>₹{selectedInvoice.totalAmount.toFixed(2)}</Text>
                       </div>
                     </div>
                   </Col>
@@ -291,9 +297,9 @@ const SalesBill = () => {
               </Card>
             )}
 
-            {selectedBill.notes && (
+            {selectedInvoice.notes && (
               <Card title="Notes" size="small">
-                <Text>{selectedBill.notes}</Text>
+                <Text>{selectedInvoice.notes}</Text>
               </Card>
             )}
           </div>
@@ -303,4 +309,4 @@ const SalesBill = () => {
   );
 };
 
-export default SalesBill;
+export default InvoiceDebugger;

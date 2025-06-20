@@ -14,6 +14,7 @@ const Inventory = lazy(() => import('@/pages/inventoryTable'));
 const Returns = lazy(() => import('@/pages/returns'));
 const PurchasePage = lazy(() => import('@/pages/purchase'));
 const SupplierPage = lazy(() => import('@/pages/supplier'));
+const InvoiceDebugger = lazy(() => import('@/pages/admin/InvoiceDebugger'));
 
 // Invoice
 const Invoice = lazy(() => import('@/pages/Invoice'));
@@ -249,12 +250,19 @@ export const routes = [
         <FinancialReports />
       </ProtectedRoute>
     ),
-  },
-  {
+  },  {
     path: '/system-history',
     element: (
       <ProtectedRoute allowedRoles={['accountant', 'admin', 'owner']}>
         <SystemHistory />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/invoice-debugger',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'owner']}>
+        <InvoiceDebugger />
       </ProtectedRoute>
     ),
   },

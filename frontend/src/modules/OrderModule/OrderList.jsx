@@ -18,7 +18,8 @@ import {
   Divider,
   Image,
   Alert,
-  Descriptions
+  Descriptions,
+  Progress
 } from 'antd';
 import {
   EyeOutlined,
@@ -56,19 +57,45 @@ const OrderList = () => {
 
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
-
-  // Fetch orders
+  // Fetch orders with enhanced customer and inventory information
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      console.log('🔍 Fetching complete order list with customer and inventory details...');
       const res = await fetch('/api/order/list', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
 
       if (!data.success) throw new Error(data.message || 'Failed to fetch orders');
+        // Log some information about the returned data for debugging
+      console.log(`✅ Successfully fetched ${data.result?.length || 0} orders`);
+      if (data.result && data.result.length > 0) {
+        console.log('📊 Sample order data structure:', {
+          customerFields: {
+            doctorId: data.result[0].doctorId,
+            doctorName: data.result[0].doctorName,
+            hospitalName: data.result[0].hospitalName
+          },
+          orderFields: {
+            orderNumber: data.result[0].orderNumber,
+            orderType: data.result[0].orderType,
+            status: data.result[0].status,
+            totalAmount: data.result[0].totalAmount
+          },
+          itemsCount: data.result[0].items?.length || 0,
+          verificationData: {
+            hasPickupVerification: !!data.result[0].pickupVerification,
+            hasDeliveryVerification: !!data.result[0].deliveryVerification,
+            pickupPhoto: data.result[0].pickupVerification?.photo ? 'HAS PHOTO' : 'NO PHOTO',
+            deliveryPhoto: data.result[0].deliveryVerification?.photo ? 'HAS PHOTO' : 'NO PHOTO'
+          }
+        });
+      }
+      
       setOrders(data.result || []);
     } catch (error) {
+      console.error('❌ Error fetching orders:', error);
       message.error(error.message || 'Failed to load orders');
     } finally {
       setLoading(false);
@@ -89,59 +116,88 @@ const OrderList = () => {
       message.error(error.message || 'Failed to load deliverers');
     }
   };
-
-  // Fetch order details with substitutions - FIXED VERSION
+  // Enhanced order details fetching with substitutions and inventory details
   const fetchOrderDetails = async (orderId) => {
-    console.log('🔍 Fetching order details for orderId:', orderId);
+    console.log('🔍 Fetching enhanced order details for orderId:', orderId);
     if (!orderId) return;
 
     setOrderLoading(true);
     try {
-      // First try the substitutions endpoint
-      const response = await fetch(`/api/order/${orderId}/substitutions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });      const data = await response.json();
-      if (data.success && data.result) {
-        console.log('✅ Fetched order details with substitutions:', data.result);
-        console.log('✅ Order items with correct IDs:', data.result.items?.map(item => ({ 
-          id: item._id, 
-          name: item.inventoryItem?.itemName,
-          quantity: item.quantity 
-        })));
+      // First try the substitutions endpoint (with detailed error handling)
+      console.log(`📡 Calling API: /api/order/${orderId}/substitutions`);
+      try {
+        const response = await fetch(`/api/order/${orderId}/substitutions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         
-        // Log the raw _id values to check for any hidden characters
-        if (data.result.items) {
-          console.log('🔍 RAW ORDER ITEM IDs FROM BACKEND:');
-          data.result.items.forEach((item, index) => {
-            console.log(`  Item ${index}: "${item._id}" (length: ${item._id?.length})`);
-          });
+        if (!response.ok) {
+          console.warn(`⚠️ Substitutions endpoint returned status ${response.status}`);
+          throw new Error(`API returned status ${response.status}`);
         }
         
-        setOrder(data.result);
-        return;
+        const data = await response.json();
+        if (data.success && data.result) {
+          console.log('✅ Successfully fetched order details with substitutions:');
+          console.log('  - Order Number:', data.result.orderNumber);
+          console.log('  - Order Type:', data.result.orderType);
+          console.log('  - Total Items:', data.result.items?.length || 0);
+          console.log('  - Customer:', data.result.doctorId?.name || data.result.doctorName || 'Unknown');
+          
+          // Check for important customer data fields
+          const customerFields = data.result.doctorId ? Object.keys(data.result.doctorId) : [];
+          console.log('  - Available Customer Fields:', customerFields.join(', '));
+          
+          // Check if items have inventory information
+          if (data.result.items && data.result.items.length > 0) {
+            const sampleItem = data.result.items[0];
+            const inventoryFields = sampleItem.inventoryItem ? Object.keys(sampleItem.inventoryItem) : [];
+            console.log('  - Available Inventory Fields:', inventoryFields.join(', '));
+            
+            // Check for substitutions
+            let totalSubstitutions = 0;
+            data.result.items.forEach(item => {
+              if (item.substitutions && item.substitutions.length > 0) {
+                totalSubstitutions += item.substitutions.length;
+              }
+            });
+            console.log('  - Total Substitutions:', totalSubstitutions);
+          }
+          
+          setOrder(data.result);
+          return;
+        } else {
+          throw new Error(data.message || 'API returned success:false');
+        }
+      } catch (substitutionError) {
+        // Log the error and continue to fallback
+        console.warn('⚠️ Failed to fetch from substitutions endpoint:', substitutionError.message);
       }
 
-      // Fallback to basic order fetch if substitutions endpoint fails
-      console.log('⚠️ Substitutions endpoint failed, trying basic fetch...');
+      // Fallback to basic order fetch 
+      console.log(`📡 Calling fallback API: /api/order/${orderId}`);
       const fallbackResponse = await fetch(`/api/order/${orderId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
+      if (!fallbackResponse.ok) {
+        console.error(`❌ Fallback endpoint returned status ${fallbackResponse.status}`);
+        throw new Error(`Fallback API returned status ${fallbackResponse.status}`);
+      }
+      
       const fallbackData = await fallbackResponse.json();
       if (fallbackData.success && fallbackData.result) {
-        console.log('✅ Fallback order details:', fallbackData.result);
-        console.log('✅ Fallback order items with IDs:', fallbackData.result.items?.map(item => ({ 
-          id: item._id, 
-          name: item.inventoryItem?.itemName,
-          quantity: item.quantity 
-        })));
+        console.log('✅ Successfully fetched basic order details (without substitutions)');
+        
+        // Display warning for missing substitution data
+        message.warning('Order loaded without substitution details. Some features may be limited.', 3);
+        
         setOrder(fallbackData.result);
       } else {
         throw new Error(fallbackData.message || 'Failed to fetch order details');
       }
     } catch (error) {
       console.error('❌ Error fetching order details:', error);
-      message.error(error.message || 'Failed to fetch order details');
+      message.error(`Failed to fetch order details: ${error.message}`);
     } finally {
       setOrderLoading(false);
     }
@@ -348,40 +404,135 @@ const OrderList = () => {
       fetchOrders();
       fetchDeliverers();
     }
-  }, [token]);
-
-  // Main table columns
+  }, [token]);  // Enhanced main table columns with complete customer and order information
   const columns = [
     {
       title: 'Order Number',
       dataIndex: 'orderNumber',
       key: 'orderNumber',
+      render: (text, record) => (
+        <div>
+          <Text strong>{text}</Text>
+          <div>
+            <Text type="secondary" style={{ fontSize: '11px' }}>
+              {new Date(record.createdAt).toLocaleDateString()}
+            </Text>
+          </div>
+        </div>
+      ),
     },
     {
       title: 'Type',
       dataIndex: 'orderType',
       key: 'orderType',
-      render: (type) => (
-        <Tag color={type === 'doctor' ? 'volcano' : 'geekblue'}>{type?.toUpperCase()}</Tag>
+      render: (type, record) => (
+        <div>
+          <Tag color={type === 'doctor' ? 'volcano' : 'geekblue'}>
+            {type?.toUpperCase()}
+          </Tag>
+          {record.items && (
+            <div style={{ marginTop: '4px' }}>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {record.items.length} items
+              </Text>
+            </div>
+          )}
+        </div>
       ),
     },
     {
-      title: 'Doctor Name',
-      dataIndex: ['doctorId', 'name'],
-      key: 'doctorName',
-      render: (_, record) => record.doctorName || '—',
+      title: 'Customer Information',
+      key: 'customerInfo',
+      render: (_, record) => {
+        // Show doctor name from either doctorId or doctorName field
+        const displayName = (record.doctorId && record.doctorId.name) || record.doctorName || '—';
+        const email = record.doctorId?.email || '—';
+        const role = record.doctorId?.role || '—';
+        
+        return (
+          <div>
+            <div>
+              <Text strong>{displayName}</Text>
+              {role !== '—' && (
+                <Tag style={{ marginLeft: '4px' }} color="cyan" size="small">
+                  {role.toUpperCase()}
+                </Tag>
+              )}
+            </div>
+            <div>
+              <Text type="secondary" style={{ fontSize: '12px' }} copyable={email !== '—'}>
+                {email}
+              </Text>
+            </div>
+          </div>
+        );
+      }
     },
     {
-      title: 'Hospital Name',
-      dataIndex: 'hospitalName',
-      key: 'hospitalName',
-      render: (text) => text || '—',
+      title: 'Facility Details',
+      key: 'facilityDetails',
+      render: (_, record) => {
+        // Show hospital name from either record or doctorId
+        const hospitalName = record.hospitalName || record.doctorId?.hospitalName || '—';
+        const address = record.doctorId?.address || '—';
+        
+        return (
+          <div>
+            <div>
+              <Text strong>{hospitalName}</Text>
+            </div>
+            {address !== '—' && (
+              <div>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  <EnvironmentOutlined style={{ marginRight: '4px' }} />
+                  {address}
+                </Text>
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
-      title: 'Total Amount',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      render: (amount) => `₹ ${amount?.toFixed(2)}`,
+      title: 'Contact',
+      key: 'contactInfo',
+      render: (_, record) => {
+        const phone = record.doctorId?.phone || record.doctorId?.mobile || '—';
+        const alternateContact = record.doctorId?.alternateContact || '—';
+        
+        return (
+          <div>
+            <div>
+              <Text copyable={phone !== '—'}>{phone}</Text>
+            </div>
+            {alternateContact !== '—' && (
+              <div>
+                <Text type="secondary" style={{ fontSize: '12px' }} copyable>
+                  Alt: {alternateContact}
+                </Text>
+              </div>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      title: 'Financial',
+      key: 'financial',
+      render: (_, record) => (
+        <div>
+          <div>
+            <Text strong>₹{record.totalAmount?.toFixed(2) || '0.00'}</Text>
+          </div>
+          <div>
+            <Tag color={record.status === 'completed' ? 'green' : 
+                      record.status === 'pending' ? 'orange' : 
+                      record.status === 'processing' ? 'blue' : 'default'}>
+              {record.status?.toUpperCase()}
+            </Tag>
+          </div>
+        </div>
+      ),
     },
     {
       title: 'Status',
@@ -469,80 +620,188 @@ const OrderList = () => {
       render: (date) => new Date(date).toLocaleString(),
     },
   ];
-
-  // Order items table columns
+  // Enhanced order items table columns with detailed inventory information
   const orderItemColumns = [
     {
-      title: 'Item Name',
-      dataIndex: ['inventoryItem', 'itemName'],
-      key: 'itemName',
-      render: (name) => name || 'N/A',
-    },
-    {
-      title: 'Category',
-      dataIndex: ['inventoryItem', 'category'],
-      key: 'category',
-      render: (category) => category || 'N/A',
-    },
-    {
-      title: 'Item ID (Debug)',
-      key: 'itemId',
-      render: (_, record) => (
-        <Text code style={{ fontSize: '10px' }}>
-          {record._id}
-        </Text>
-      ),
-    },
-    {
-      title: 'Ordered Qty',
-      dataIndex: 'quantity',
-      key: 'quantity',
-      render: (qty, record) => {
-        const substituted = calculateSubstitutedQuantity(record);
-        const remaining = qty - substituted;
-
+      title: 'Item Details',
+      key: 'itemDetails',
+      render: (_, record) => {
+        const itemName = record.inventoryItem?.itemName || 'N/A';
+        const category = record.inventoryItem?.category || 'N/A';
+        const manufacturer = record.inventoryItem?.manufacturer || 'N/A';
+        const description = record.inventoryItem?.description || '';
+        
         return (
-          <Space direction="vertical" size={0}>
-            <Text strong>{qty}</Text>
-            {substituted > 0 && (
-              <Text type="success" style={{ fontSize: '12px' }}>
-                Substituted: {substituted}
+          <div>
+            <div>
+              <Text strong>{itemName}</Text>
+              <Tag color="blue" style={{ marginLeft: '8px' }}>{category}</Tag>
+            </div>
+            <div>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Manufacturer: {manufacturer}
               </Text>
+            </div>
+            {description && (
+              <div>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  {description.length > 40 ? `${description.substring(0, 40)}...` : description}
+                </Text>
+              </div>
             )}
-            {remaining > 0 && (
-              <Text type="warning" style={{ fontSize: '12px' }}>
-                Remaining: {remaining}
+            <div style={{ marginTop: '4px' }}>
+              <Text code style={{ fontSize: '10px' }}>
+                ID: {record._id}
               </Text>
-            )}
-          </Space>
+            </div>
+          </div>
+        );
+      },
+      width: '30%',
+    },
+    {
+      title: 'Specifications',
+      key: 'specifications',
+      render: (_, record) => {
+        const batchNumber = record.inventoryItem?.batchNumber || 'N/A';
+        const expiryDate = record.inventoryItem?.expiryDate 
+          ? new Date(record.inventoryItem.expiryDate).toLocaleDateString()
+          : 'N/A';
+          
+        // Calculate if item is expired or about to expire
+        let expiryStatus = 'normal';
+        let expiryColor = 'default';
+        
+        if (record.inventoryItem?.expiryDate) {
+          const now = new Date();
+          const expiryDate = new Date(record.inventoryItem.expiryDate);
+          const daysToExpiry = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
+          
+          if (daysToExpiry < 0) {
+            expiryStatus = 'Expired';
+            expiryColor = 'red';
+          } else if (daysToExpiry < 30) {
+            expiryStatus = 'Expiring Soon';
+            expiryColor = 'orange';
+          }
+        }
+        
+        return (
+          <div>
+            <div>
+              <Text strong>Batch: </Text>
+              <Text>{batchNumber}</Text>
+            </div>
+            <div>
+              <Text strong>Expiry: </Text>
+              {expiryStatus !== 'normal' ? (
+                <Tag color={expiryColor}>{expiryStatus} - {expiryDate}</Tag>
+              ) : (
+                <Text>{expiryDate}</Text>
+              )}
+            </div>
+          </div>
         );
       },
     },
     {
-      title: 'Unit Price',
-      dataIndex: 'unitPrice',
-      key: 'unitPrice',
-      render: (price) => price ? `₹${price.toFixed(2)}` : 'N/A',
+      title: 'Quantity & Status',
+      key: 'quantityStatus',
+      render: (_, record) => {
+        const qty = record.quantity || 0;
+        const substituted = calculateSubstitutedQuantity(record);
+        const remaining = qty - substituted;
+
+        return (
+          <div>
+            <div>
+              <Text strong style={{ fontSize: '16px' }}>{qty}</Text>
+              <Text type="secondary"> units</Text>
+            </div>
+            {substituted > 0 && (
+              <div>
+                <Badge status="success" />
+                <Text type="success" style={{ fontSize: '12px' }}>
+                  Substituted: {substituted}
+                </Text>
+              </div>
+            )}
+            {remaining > 0 && (
+              <div>
+                <Badge status="warning" />
+                <Text type="warning" style={{ fontSize: '12px' }}>
+                  Remaining: {remaining}
+                </Text>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
-      title: 'Total Price',
-      dataIndex: 'totalPrice',
-      key: 'totalPrice',
-      render: (price) => price ? `₹${price.toFixed(2)}` : 'N/A',
-    },
-    {
+      title: 'Pricing',
+      key: 'pricing',
+      render: (_, record) => {
+        const unitPrice = record.unitPrice || record.inventoryItem?.price || 0;
+        const totalPrice = record.totalPrice || (unitPrice * record.quantity) || 0;
+        
+        return (
+          <div>
+            <div>
+              <Text strong>Unit: </Text>
+              <Text>₹{unitPrice.toFixed(2)}</Text>
+            </div>
+            <div>
+              <Text strong>Total: </Text>
+              <Text style={{ fontWeight: 'bold' }}>₹{totalPrice.toFixed(2)}</Text>
+            </div>
+          </div>
+        );
+      },
+    },    {
       title: 'Status',
       key: 'status',
       render: (_, record) => {
         const substituted = calculateSubstitutedQuantity(record);
         const remaining = record.quantity - substituted;
+        const percentage = record.quantity > 0 ? Math.round((substituted / record.quantity) * 100) : 0;
 
         if (substituted === record.quantity) {
-          return <Tag color="green" icon={<CheckCircleOutlined />}>Fully Substituted</Tag>;
+          return (
+            <div>
+              <Tag color="green" icon={<CheckCircleOutlined />}>Fully Substituted</Tag>
+              <div style={{ marginTop: '6px' }}>
+                <Progress percent={100} size="small" status="success" showInfo={false} />
+                <div style={{ textAlign: 'center', fontSize: '11px' }}>
+                  <Text type="success">100% Complete</Text>
+                </div>
+              </div>
+            </div>
+          );
         } else if (substituted > 0) {
-          return <Tag color="orange" icon={<ExclamationCircleOutlined />}>Partially Substituted</Tag>;
+          return (
+            <div>
+              <Tag color="orange" icon={<ExclamationCircleOutlined />}>Partially Substituted</Tag>
+              <div style={{ marginTop: '6px' }}>
+                <Progress percent={percentage} size="small" status="active" showInfo={false} />
+                <div style={{ textAlign: 'center', fontSize: '11px' }}>
+                  <Text type="warning">{percentage}% Complete</Text>
+                </div>
+              </div>
+            </div>
+          );
         } else {
-          return <Tag color="blue">Pending</Tag>;
+          return (
+            <div>
+              <Tag color="blue">Pending Substitution</Tag>
+              <div style={{ marginTop: '6px' }}>
+                <Progress percent={0} size="small" showInfo={false} />
+                <div style={{ textAlign: 'center', fontSize: '11px' }}>
+                  <Text type="secondary">Not Started</Text>
+                </div>
+              </div>
+            </div>
+          );
         }
       },
     },
@@ -663,8 +922,7 @@ const OrderList = () => {
                 <Spin size="large" />
               </div>
             ) : order ? (
-              <div>
-                {/* Order Summary */}
+              <div>                {/* Order Summary */}
                 <Card style={{ marginBottom: 16 }}>
                   <Row gutter={16}>
                     <Col span={6}>
@@ -692,6 +950,42 @@ const OrderList = () => {
                       </Tag>
                     </Col>
                   </Row>
+                  
+                  {/* Customer Details */}
+                  <Divider orientation="left">Customer Information</Divider>
+                  <Row gutter={16}>
+                    <Col span={6}>
+                      <Text strong>Customer Name:</Text>
+                      <br />
+                      <Text>{(order.doctorId && order.doctorId.name) || order.doctorName || 'N/A'}</Text>
+                    </Col>
+                    <Col span={6}>
+                      <Text strong>Hospital/Facility:</Text>
+                      <br />
+                      <Text>{order.hospitalName || (order.doctorId && order.doctorId.hospitalName) || 'N/A'}</Text>
+                    </Col>
+                    <Col span={6}>
+                      <Text strong>Email:</Text>
+                      <br />
+                      <Text copyable>{(order.doctorId && order.doctorId.email) || 'N/A'}</Text>
+                    </Col>
+                    <Col span={6}>
+                      <Text strong>Phone:</Text>
+                      <br />
+                      <Text copyable>{(order.doctorId && (order.doctorId.phone || order.doctorId.mobile)) || 'N/A'}</Text>
+                    </Col>
+                  </Row>
+                  
+                  {order.doctorId && order.doctorId.address && (
+                    <Row style={{ marginTop: 16 }}>
+                      <Col span={24}>
+                        <Text strong>Address:</Text>
+                        <br />
+                        <Text>{order.doctorId.address}</Text>
+                      </Col>
+                    </Row>
+                  )}
+                  
                   <Row style={{ marginTop: 16 }}>
                     <Col span={24}>
                       <Text strong>Order ID (Debug):</Text>
@@ -700,6 +994,53 @@ const OrderList = () => {
                     </Col>
                   </Row>
                 </Card>
+
+                {/* Enhanced Customer Details Section */}
+                {order.doctorId && (
+                  <Card 
+                    title={
+                      <div>
+                        <InfoCircleOutlined style={{ color: '#1890ff', marginRight: 8 }} />
+                        Detailed Customer Information
+                      </div>
+                    }
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Descriptions bordered column={2} size="small">
+                      <Descriptions.Item label="Customer ID" span={2}>
+                        <Text code>{order.doctorId._id}</Text>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Name">
+                        {order.doctorId.name || 'N/A'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Role">
+                        <Tag color="blue">{order.doctorId.role?.toUpperCase() || 'N/A'}</Tag>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Email">
+                        <Text copyable>{order.doctorId.email || 'N/A'}</Text>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Phone">
+                        <Text copyable>{order.doctorId.phone || order.doctorId.mobile || 'N/A'}</Text>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Hospital/Facility" span={2}>
+                        {order.hospitalName || order.doctorId.hospitalName || 'N/A'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Address" span={2}>
+                        {order.doctorId.address || 'N/A'}
+                      </Descriptions.Item>
+                      {order.doctorId.specialization && (
+                        <Descriptions.Item label="Specialization" span={2}>
+                          {order.doctorId.specialization}
+                        </Descriptions.Item>
+                      )}
+                      {order.doctorId.notes && (
+                        <Descriptions.Item label="Notes" span={2}>
+                          {order.doctorId.notes}
+                        </Descriptions.Item>
+                      )}
+                    </Descriptions>
+                  </Card>
+                )}
 
                 {/* Order Items */}
                 <Title level={4}>Order Items</Title>
@@ -829,8 +1170,7 @@ const OrderList = () => {
                               title="Pickup Photo" 
                               size="small"
                               style={{ textAlign: 'center' }}
-                            >
-                              {order.pickupVerification.photo ? (
+                            >                              {order.pickupVerification.photo ? (
                                 <Image
                                   src={order.pickupVerification.photo}
                                   alt="Pickup Verification"
@@ -841,6 +1181,7 @@ const OrderList = () => {
                                       <div>Loading photo...</div>
                                     </div>
                                   }
+                                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
                                 />
                               ) : (
                                 <div style={{ padding: '50px', color: '#999' }}>
@@ -891,8 +1232,7 @@ const OrderList = () => {
                               title="Delivery Photo" 
                               size="small"
                               style={{ textAlign: 'center' }}
-                            >
-                              {order.deliveryVerification.photo ? (
+                            >                              {order.deliveryVerification.photo ? (
                                 <Image
                                   src={order.deliveryVerification.photo}
                                   alt="Delivery Verification"
@@ -903,6 +1243,7 @@ const OrderList = () => {
                                       <div>Loading photo...</div>
                                     </div>
                                   }
+                                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
                                 />
                               ) : (
                                 <div style={{ padding: '40px', color: '#999' }}>
@@ -917,8 +1258,7 @@ const OrderList = () => {
                               title="Customer Signature" 
                               size="small"
                               style={{ textAlign: 'center' }}
-                            >
-                              {order.deliveryVerification.customerSignature ? (
+                            >                              {order.deliveryVerification.customerSignature ? (
                                 <Image
                                   src={order.deliveryVerification.customerSignature}
                                   alt="Customer Signature"
@@ -929,6 +1269,7 @@ const OrderList = () => {
                                       <div>Loading signature...</div>
                                     </div>
                                   }
+                                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
                                 />
                               ) : (
                                 <div style={{ padding: '40px', color: '#999' }}>

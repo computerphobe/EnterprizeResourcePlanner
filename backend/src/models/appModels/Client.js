@@ -8,8 +8,12 @@ const schema = new mongoose.Schema({
   enabled: {
     type: Boolean,
     default: true,
+  },  organizationId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Admin', // References the owner admin
+    required: false, // Make optional for backward compatibility
+    default: null
   },
-
   name: {
     type: String,
     required: true,
@@ -17,8 +21,22 @@ const schema = new mongoose.Schema({
   phone: String,
   country: String,
   address: String,
-  email: String,
-  createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
+  email: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true
+  },
+  linkedUserId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Admin', // References the user account (hospital/doctor)
+    required: false
+  },
+  userRole: {
+    type: String,
+    enum: ['hospital', 'doctor', 'distributor', null],
+    required: false
+  },  createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
     type: Date,

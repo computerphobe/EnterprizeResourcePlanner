@@ -17,13 +17,19 @@ const constrollersList = [];
 const appModelsList = [];
 const entityList = [];
 
-// ✅ Fixed modelName from 'Inventory' → 'ProductInventory'
+// Updated to use only Inventory model
 const routesList = [
   {
-  entity: 'inventory',
-  controllerName: 'productInventoryController',
-  modelName: 'ProductInventory',
-},
+    entity: 'inventory',
+    controllerName: 'inventoryController',
+    modelName: 'Inventory',
+  },
+  // Keeping this entry for backward compatibility, but pointing to the same controller and model
+  {
+    entity: 'productinventory',
+    controllerName: 'inventoryController', // Point to the same controller
+    modelName: 'Inventory', // Point to the unified Inventory model
+  },
 
   {
     entity: 'returns',

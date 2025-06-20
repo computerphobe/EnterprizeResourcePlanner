@@ -4,8 +4,12 @@ const invoiceSchema = new mongoose.Schema({
   removed: {
     type: Boolean,
     default: false,
+  },  organizationId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Admin', // References the owner admin
+    required: false, // Make optional for backward compatibility
+    default: null
   },
-
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
   number: {
     type: Number,

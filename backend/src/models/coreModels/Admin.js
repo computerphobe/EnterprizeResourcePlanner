@@ -10,7 +10,11 @@ const adminSchema = new Schema({
     type: Boolean,
     default: false,
   },
-
+  organizationId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Admin', // References the main admin/owner
+    required: false // Only required for non-owner roles
+  },
   email: {
     type: String,
     lowercase: true,
@@ -22,11 +26,11 @@ const adminSchema = new Schema({
   photo: {
     type: String,
     trim: true,
-  },
-  created: {
+  },  created: {
     type: Date,
     default: Date.now,
-  },  role: {
+  },
+  role: {
     type: String,
     default: 'owner',
     enum: ['owner','doctor', 'hospital', 'distributor', 'deliverer', 'accountant'],

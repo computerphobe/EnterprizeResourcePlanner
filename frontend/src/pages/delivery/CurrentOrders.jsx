@@ -182,9 +182,9 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
         requestData.customerName = values.customerName;
       }
 
-      const endpoint = verificationType === 'pickup' 
-        ? `/api/order/${selectedOrderForAction._id}/pickup`
-        : `/api/order/${selectedOrderForAction._id}/deliver`;
+      const endpoint = verificationType === 'pickup'
+        ? `/api/order/${selectedOrderForAction._id}/mark-pickup`
+        : `/api/order/${selectedOrderForAction._id}/mark-delivered`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -663,123 +663,6 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
             </Button>
           </Form.Item>
         </Form>
-      </Modal>
-
-      {/* Photo Verification Modal */}
-      <Modal
-        title={
-          <div>
-            <CameraOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-            {verificationType === 'pickup' ? 'Pickup Verification' : 'Delivery Verification'}
-          </div>
-        }
-        open={verificationModalVisible}
-        onCancel={closeVerificationModal}
-        footer={[
-          <Button key="cancel" onClick={closeVerificationModal}>
-            Cancel
-          </Button>,
-          <Button 
-            key="submit" 
-            type="primary" 
-            onClick={handleVerificationSubmit}
-            loading={actionLoading === selectedOrderForAction?._id}
-          >
-            {verificationType === 'pickup' ? 'Confirm Pickup' : 'Confirm Delivery'}
-          </Button>
-        ]}
-        width={600}
-      >
-        {selectedOrderForAction && (
-          <div>
-            <Alert
-              message={`${verificationType === 'pickup' ? 'Pickup' : 'Delivery'} Verification Required`}
-              description={`Please provide photo verification ${verificationType === 'delivery' ? 'and customer signature ' : ''}for Order ${selectedOrderForAction.orderNumber}`}
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-
-            <Form form={verificationForm} layout="vertical">
-              {/* Photo Upload */}
-              <Form.Item
-                label="Photo Verification"
-                required
-                help="Take a photo to verify the action"
-              >
-                <Upload
-                  beforeUpload={handlePhotoCapture}
-                  showUploadList={false}
-                  accept="image/*"
-                >
-                  <Button icon={<CameraOutlined />} size="large" block>
-                    {capturedPhoto ? 'Retake Photo' : 'Capture Photo'}
-                  </Button>
-                </Upload>
-                {capturedPhoto && (
-                  <div style={{ marginTop: 8, textAlign: 'center' }}>
-                    <img 
-                      src={capturedPhoto} 
-                      alt="Captured" 
-                      style={{ maxWidth: '100%', maxHeight: 200, border: '1px solid #d9d9d9' }}
-                    />
-                  </div>
-                )}
-              </Form.Item>
-
-              {/* Customer Details for Delivery */}
-              {verificationType === 'delivery' && (
-                <>
-                  <Form.Item
-                    label="Customer Name"
-                    required
-                  >
-                    <Input
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Enter customer name"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    label="Customer Signature"
-                    required
-                    help="Customer signature for delivery confirmation"
-                  >
-                    <div
-                      style={{
-                        border: '2px dashed #d9d9d9',
-                        borderRadius: 6,
-                        padding: 16,
-                        textAlign: 'center',
-                        backgroundColor: '#fafafa'
-                      }}
-                    >
-                      <EditOutlined style={{ fontSize: 24, color: '#bfbfbf' }} />
-                      <div style={{ marginTop: 8 }}>
-                        <Input
-                          placeholder="Customer signature (text or draw)"
-                          value={customerSignature}
-                          onChange={(e) => setCustomerSignature(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </Form.Item>
-                </>
-              )}
-
-              {/* Notes */}
-              <Form.Item label="Notes (Optional)">
-                <TextArea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any additional notes..."
-                  rows={3}
-                />
-              </Form.Item>
-            </Form>
-          </div>
-        )}
       </Modal>
     </div>
   );

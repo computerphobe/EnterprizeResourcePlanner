@@ -89,23 +89,20 @@ export default function ItemRow({ field, remove, current = null }) {
             addonBefore={money.currency_position === 'before' ? money.currency_symbol : undefined}
           />
         </Form.Item>
-      </Col>
-      <Col className="gutter-row" span={5}>
+      </Col>      <Col className="gutter-row" span={5}>
         <Form.Item name={[field.name, 'total']}>
-          <Form.Item>
-            <InputNumber
-              readOnly
-              className="moneyInput"
-              value={totalState}
-              min={0}
-              controls={false}
-              addonAfter={money.currency_position === 'after' ? money.currency_symbol : undefined}
-              addonBefore={money.currency_position === 'before' ? money.currency_symbol : undefined}
-              formatter={(value) =>
-                money.amountFormatter({ amount: value, currency_code: money.currency_code })
-              }
-            />
-          </Form.Item>
+          <InputNumber
+            readOnly
+            className="moneyInput"
+            value={totalState}
+            min={0}
+            controls={false}
+            addonAfter={money.currency_position === 'after' ? money.currency_symbol : undefined}
+            addonBefore={money.currency_position === 'before' ? money.currency_symbol : undefined}
+            formatter={(value) =>
+              money.amountFormatter({ amount: value, currency_code: money.currency_code })
+            }
+          />
         </Form.Item>
       </Col>
 

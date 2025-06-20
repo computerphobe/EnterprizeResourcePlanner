@@ -120,6 +120,15 @@ router.get(
   catchErrors(orderController.getDeliveredOrdersHistory)
 );
 
+// Get all completed orders for return collection (any deliverer can collect returns)
+router.get(
+  '/order/completed-for-returns',
+  authenticateToken,
+  roleMiddleware(['deliverer', 'admin', 'owner']),
+  catchErrors(orderController.getAllCompletedOrdersForReturns)
+);
+
+// Deliverer-specific routes
 router.route('/deliveries/pending-delivery')
   .post(authenticateToken, roleMiddleware(['deliverer']), catchErrors(deliveryController.confirmPickup));
 
@@ -164,7 +173,7 @@ router.get(
 
 router.post(
   '/order/:orderId/pickup', 
-  authenticateToken,
+  authenticateToken,  
   roleMiddleware(['deliverer']),
   catchErrors(deliveryController.confirmPickup)
 );
@@ -183,6 +192,14 @@ router.route('/order/:orderId/substitutions')
     authenticateToken, 
     roleMiddleware(['owner', 'admin', 'accountant']), 
     catchErrors(orderController.getOrderWithSubstitutions)
+  );
+
+// Get basic order by ID (fallback endpoint)
+router.route('/order/:orderId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    catchErrors(orderController.getOrderById)
   );
 
 // --- Legacy fallback route for assigning delivery ---
@@ -342,6 +359,96 @@ router.route('/hospital/orders')
 
 router.route('/hospital/orders/create')
   .post(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.createHospitalOrder));
+
+// New endpoint for hospital to get order details
+router.route('/hospital/orders/:orderId')
+  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.getOrderById));
+
+// Hospital and Doctor Sales Bills (Invoices)
+router.route('/hospital/sales-bills')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['hospital']),
+    (req, res, next) => {
+      console.log('🏥 Hospital sales-bills route hit, user:', req.user?.id);
+      next();
+    },
+    catchErrors(appControllers.invoiceController.getClientInvoices)
+  );
+
+router.route('/doctor/sales-bills')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['doctor']),
+    (req, res, next) => {
+      console.log('🧠 Doctor sales-bills route hit, user:', req.user?.id);
+      next();
+    },
+    catchErrors(appControllers.invoiceController.getClientInvoices)
+  );
+
+// Direct endpoint for admins to look up invoices by client ID
+router.route('/admin/client-invoices/:clientId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin', 'accountant']), 
+    (req, res, next) => {
+      // Override the user ID with the requested client ID
+      req.user = { ...req.user, id: req.params.clientId };
+      console.log('👨‍💼 Admin looking up invoices for client:', req.params.clientId);
+      next();
+    },
+    catchErrors(appControllers.invoiceController.getClientInvoices)
+  );
+
+// Endpoint for admins to manually create/find clients
+router.route('/admin/client/find-or-create')
+  .post(
+    authenticateToken, 
+    roleMiddleware(['owner', 'admin']),
+    async (req, res) => {
+      try {
+        const { findOrCreateClientByUserId } = require('@/controllers/appControllers/clientController/clientUtils');
+        const { userId, userInfo } = req.body;
+        
+        if (!userId) {
+          return res.status(400).json({
+            success: false,
+            message: 'userId is required'
+          });
+        }
+        
+        const client = await findOrCreateClientByUserId(userId, userInfo || {});
+        
+        if (client) {
+          return res.status(200).json({
+            success: true,
+            result: client,
+            message: `Client ${client.name} found/created successfully`
+          });
+        } else {
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to find or create client'
+          });
+        }
+      } catch (error) {
+        console.error('Error in find-or-create client:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Server error',
+          error: error.message
+        });
+      }
+    }
+  );
+
+// 🧠 Doctor Order Routes
+router.route('/doctor/orders')
+  .get(authenticateToken, roleMiddleware(['doctor']), catchErrors(orderController.doctorOrders));
+
+router.route('/doctor/orders/create')
+  .post(authenticateToken, roleMiddleware(['doctor']), catchErrors(orderController.createDoctorOrder));
 
 // 🧠 Register all dynamic entity-based routes
 routesList.forEach(({ entity, controllerName }) => {

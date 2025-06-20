@@ -91,4 +91,4 @@ const returnsSchema = new mongoose.Schema({
 returnsSchema.index({ originalItemId: 1, status: 1 });
 returnsSchema.index({ status: 1 });
 
-module.exports = mongoose.model('Return', returnsSchema);
+module.exports = mongoose.model('Returns', returnsSchema);

@@ -17,15 +17,21 @@ export default function SettingsForm() {
             required: true,
           },
         ]}
-      >
-        <Select
+      >        <Select
           showSearch
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-          filterSort={(optionA, optionB) =>
-            (optionA?.label ?? '').toLowerCase().startsWith((optionB?.label ?? '').toLowerCase())
-          }
+          filterOption={(input, option) => {
+            const label = option?.label || '';
+            const searchString = typeof label === 'string' ? label : String(label || '');
+            const inputString = typeof input === 'string' ? input : String(input || '');
+            return searchString.toLowerCase().includes(inputString.toLowerCase());
+          }}
+          filterSort={(optionA, optionB) => {
+            const labelA = optionA?.label || '';
+            const labelB = optionB?.label || '';
+            const stringA = typeof labelA === 'string' ? labelA : String(labelA || '');
+            const stringB = typeof labelB === 'string' ? labelB : String(labelB || '');
+            return stringA.toLowerCase().startsWith(stringB.toLowerCase());
+          }}
           options={currencyOptions()}
         ></Select>
       </Form.Item>

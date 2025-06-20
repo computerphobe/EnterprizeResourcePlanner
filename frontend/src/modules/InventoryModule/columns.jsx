@@ -11,6 +11,26 @@ const columns = () => {
       key: 'itemName',
     },
     {
+      title: translate('Product Code'),
+      dataIndex: 'productCode',
+      key: 'productCode',
+    },
+    {
+      title: translate('Name Alias'),
+      dataIndex: 'nameAlias',
+      key: 'nameAlias',
+    },
+    {
+      title: translate('Material'),
+      dataIndex: 'material',
+      key: 'material',
+    },
+    {
+      title: translate('GST Rate'),
+      dataIndex: 'gstRate',
+      key: 'gstRate',
+    },
+    {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',

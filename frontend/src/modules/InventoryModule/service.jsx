@@ -1,4 +1,7 @@
 import { request } from '@/request';
+import axios from 'axios';
+import { API_BASE_URL } from '@/config/serverApiConfig';
+import storePersist from '@/redux/storePersist';
 
 const entity = 'inventory';
 
@@ -8,33 +11,43 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// Include token for direct axios calls
+const includeTokenManually = () => {
+  const auth = storePersist.get('auth');
+  if (auth && auth.current && auth.current.token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+  }
+};
+
 // List Inventory (GET with headers)
 export const getinventory = async (params = {}) => {
   try {
-    const response = await request.list({
-      entity,
-      options: {
-        params,
-        headers: getAuthHeaders(),
-      },
-    });
-
-    console.log('Fetched Inventory:', response); // ✅ Debug log
-    if (response.success && Array.isArray(response.result)) {
-      return response.result.map(item => ({
+    includeTokenManually();
+    const response = await axios.get(`${API_BASE_URL}/inventory/list`);
+    
+    console.log('Fetched Inventory Direct:', response.data); // ✅ Debug log
+    if (response.data.success && Array.isArray(response.data.result)) {
+      return response.data.result.map(item => ({
         ...item,
-<<<<<<< HEAD
         key: item._id, // Ensure each item has a unique key
-=======
-        key: item._id,
-        status: item.quantity > 0 ? 'In Stock' : 'Out of Stock'
->>>>>>> final_changes
       }));
     }
     return [];
   } catch (error) {
     console.error('Error fetching inventory:', error);
     return [];
+  }
+};
+
+// Alternative using request pattern
+export const listInventory = async () => {
+  try {
+    const response = await request.list({ entity });
+    console.log('Fetched Inventory with request:', response); // ✅ Debug log
+    return response;
+  } catch (error) {
+    console.error('Error fetching inventory (request):', error);
+    return { success: false, result: [] };
   }
 };
 
@@ -55,10 +68,18 @@ export const getinventoryById = async (id) => {
 // Create Inventory (POST with headers)
 export const createinventory = async (data) => {
   try {
-    console.log('Creating inventory:', data); // ✅ Debug log
+    // Ensure GST rate is properly passed as a number
+    const processedData = {
+      ...data,
+      gstRate: data.gstRate ? Number(data.gstRate) : 5
+    };
+    
+    console.log('Creating inventory with GST rate:', processedData.gstRate, 'Type:', typeof processedData.gstRate);
+    console.log('Full data being sent:', processedData);
+    
     const response = await request.create({
       entity,
-      jsonData: data,
+      jsonData: processedData,
       options: { headers: getAuthHeaders() },
     });
     console.log('Response after creation:', response); // ✅ Debug log
@@ -72,13 +93,22 @@ export const createinventory = async (data) => {
 // Update Inventory (PATCH with headers)
 export const updateinventory = async (id, data) => {
   try {
+    // Ensure GST rate is properly passed as a number
+    const processedData = {
+      ...data,
+      gstRate: data.gstRate ? Number(data.gstRate) : undefined
+    };
+    
+    console.log('Updating inventory with GST rate:', processedData.gstRate, 'Type:', typeof processedData.gstRate);
+    console.log('Full update data being sent:', processedData);
+    
     const response = await request.update({
       entity,
       id,
-      jsonData: data,
+      jsonData: processedData,
       options: { headers: getAuthHeaders() },
     });
-    console.log('Response after update:', response); // ✅ Optional debug log
+    console.log('Response after update:', response);
     return response.result;
   } catch (error) {
     console.error('Error updating inventory:', error);

@@ -36,15 +36,18 @@ const History = () => {
     if (!token) {
       setLoading(false);
       return;
-    }
-
-    fetch('/api/order/delivered-history', {
+    }    fetch('/api/order/delivered-history', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setHistory(data.result || []);
+          // Filter to show only completed orders for deliverer's history
+          const completedOrders = (data.result || []).filter(order => 
+            order.status === 'completed' && order.deliveredAt
+          );
+          setHistory(completedOrders);
+          console.log(`Loaded ${completedOrders.length} completed orders for deliverer history`);
         } else {
           console.error('Failed to fetch delivery history:', data.message);
           setHistory([]);

@@ -391,9 +391,12 @@ export default function PurchaseList() {
                 loading={suppliersLoading}
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                }
+                filterOption={(input, option) => {
+                  const children = option?.children || '';
+                  const searchString = typeof children === 'string' ? children : String(children || '');
+                  const inputString = typeof input === 'string' ? input : String(input || '');
+                  return searchString.toLowerCase().indexOf(inputString.toLowerCase()) >= 0;
+                }}
               >
                 {suppliers.map(supplier => (
                   <Select.Option key={supplier._id} value={supplier._id}>
@@ -459,9 +462,12 @@ export default function PurchaseList() {
                             loading={inventoryLoading}
                             showSearch
                             optionFilterProp="children"
-                            filterOption={(input, option) =>
-                              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                            }
+                            filterOption={(input, option) => {
+                              const children = option?.children || '';
+                              const searchString = typeof children === 'string' ? children : String(children || '');
+                              const inputString = typeof input === 'string' ? input : String(input || '');
+                              return searchString.toLowerCase().indexOf(inputString.toLowerCase()) >= 0;
+                            }}
                           >
                             {inventory.map(item => (
                               <Select.Option key={item._id} value={item._id}>

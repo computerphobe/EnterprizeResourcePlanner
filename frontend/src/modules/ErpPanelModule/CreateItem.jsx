@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Tag, Form, Divider } from 'antd';
+import { Button, Tag, Form, Divider, Input, DatePicker, Select, InputNumber } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,7 @@ import useLanguage from '@/locale/useLanguage';
 import { settingsAction } from '@/redux/settings/actions';
 import { erp } from '@/redux/erp/actions';
 import { selectCreatedItem } from '@/redux/erp/selectors';
+import { selectAuth } from '@/redux/auth/selectors';
 
 import calculate from '@/utils/calculate';
 
@@ -36,13 +37,34 @@ export default function CreateItem({ config, CreateForm }) {
 
   const { entity } = config;
   const { isLoading, isSuccess, result } = useSelector(selectCreatedItem);
+  const { current } = useSelector(selectAuth);
   const [form] = Form.useForm();
   const [subTotal, setSubTotal] = useState(0);
   const [offerSubTotal, setOfferSubTotal] = useState(0);
+  const [clients, setClients] = useState([]);
 
+  // Load settings once
   useEffect(() => {
     dispatch(settingsAction.list({ entity: 'setting' }));
-  }, []);
+  }, [dispatch]);
+
+  // Fetch clients when user (`current`) is available
+  useEffect(() => {
+    if (!current?.token) return;
+    (async () => {
+      try {
+        const response = await fetch('/api/client/list', {
+          headers: { Authorization: `Bearer ${current.token}` }
+        });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.result)) {
+          setClients(data.result);
+        }
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+      }
+    })();
+  }, [current]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -71,11 +93,16 @@ export default function CreateItem({ config, CreateForm }) {
     setSubTotal(newSubTotal);
     setOfferSubTotal(newOfferTotal);
   };
-
   const onSubmit = (fieldsValue) => {
     // ✅ Convert dayjs objects to native Date
     fieldsValue.date = fieldsValue.date?.toDate?.() || fieldsValue.date;
     fieldsValue.expiredDate = fieldsValue.expiredDate?.toDate?.() || fieldsValue.expiredDate;
+
+    // ✅ Ensure client is set and is a valid ObjectId string
+    if (!fieldsValue.client) {
+      console.error('❌ Client is required but not provided');
+      return;
+    }
 
     // ✅ Clean and prepare items
     const items = (fieldsValue.items || []).map((item) => ({
@@ -92,6 +119,7 @@ export default function CreateItem({ config, CreateForm }) {
     };
 
     console.log('✅ Final payload to backend:', invoicePayload);
+    console.log('✅ Client field value:', invoicePayload.client);
     dispatch(erp.create({ entity, jsonData: invoicePayload }));
   };
 
@@ -116,14 +144,20 @@ export default function CreateItem({ config, CreateForm }) {
         style={{ padding: '20px 0px' }}
       />
       <Divider dashed />
-      <Loading isLoading={isLoading}>
-        <Form
+      <Loading isLoading={isLoading}>        <Form
           form={form}
           layout="vertical"
           onFinish={onSubmit}
-          onFinishFailed={(err) => console.warn('Validation failed:', err)}
+          onFinishFailed={(errorInfo) => {
+            console.warn('❌ Form validation failed:', errorInfo);
+            console.warn('❌ Failed fields:', errorInfo.errorFields?.map(field => ({
+              name: field.name,
+              errors: field.errors
+            })));
+          }}
           onValuesChange={handelValuesChange}
         >
+          {/* Render dynamic item fields */}
           <CreateForm
             subTotal={subTotal}
             offerTotal={offerSubTotal}

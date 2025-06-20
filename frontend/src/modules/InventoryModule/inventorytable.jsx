@@ -1,51 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Popconfirm, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Table, Button, Space, Popconfirm, message, Empty, Collapse } from 'antd';
+import { PlusOutlined, ReloadOutlined, BugOutlined } from '@ant-design/icons';
 import InventoryForm from './inventoryForm';
-import { getinventory, deleteinventory } from './service';
-import getColumns from './columns';
+import { deleteinventory } from './service';
+import columnsFunction from './columns';
 
-export default function InventoryTable() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+// Use a default parameter object and extract properties with defaults
+export default function InventoryTable(props = {}) {
+  const { loading = false, refresh } = props;
+  // Make sure data is always an array even if props or props.data is undefined
+  const inventoryData = Array.isArray(props.data) ? props.data : [];
+  console.log(inventoryData)
   const [formVisible, setFormVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const result = await getinventory();
-      console.log("Fetched Inventory Data:", result);
-      if (Array.isArray(result)) {
-        setData(result.map(item => ({
-          ...item,
-          key: item._id,
-          status: item.quantity > 0 ? 'In Stock' : 'Out of Stock'
-        })));
-      } else {
-        setData([]);
-      }
-    } catch (err) {
-      console.error("Error loading inventory:", err);
-      message.error("Error loading inventory");
-      setData([]);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [showDebug, setShowDebug] = useState(false);
 
   const handleDelete = async (id) => {
     try {
       await deleteinventory(id);
       message.success('Deleted successfully');
-      loadData();
+      if (refresh) refresh();
+      else window.location.reload(); // Fallback
     } catch (err) {
       message.error('Delete failed');
     }
   };
+
+  // Display raw data for debugging
+  console.log("📊 InventoryTable rendering with data:", inventoryData);
 
   return (
     <>
@@ -60,27 +42,75 @@ export default function InventoryTable() {
         >
           Add Inventory
         </Button>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={refresh}
+        >
+          Refresh
+        </Button>
+        <Button 
+          icon={<BugOutlined />}
+          onClick={() => setShowDebug(!showDebug)}
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </Button>
       </Space>
+        {showDebug && (
+        <Collapse style={{ marginBottom: 16 }}>
+          <Collapse.Panel header="Debug: Raw Inventory Data">
+            <pre style={{ maxHeight: '400px', overflow: 'auto' }}>
+              {JSON.stringify(inventoryData, null, 2)}
+            </pre>
+          </Collapse.Panel>
+        </Collapse>
+      )}
+        {inventoryData.length > 0 ? (
+        <Table
+          rowKey={(record) => record._id || Math.random()}
+          columns={[...columnsFunction(), {
+            title: 'Actions',
+            render: (text, record) => (
+              <Space>
+                <Button size="small" onClick={() => { setEditingItem(record); setFormVisible(true); }}>Edit</Button>
+                <Popconfirm title="Delete this item?" onConfirm={() => handleDelete(record._id)}>
+                  <Button size="small" danger>Delete</Button>
+                </Popconfirm>
+              </Space>
+            ),
+          }]}
+          dataSource={inventoryData}
+          loading={loading}
+          expandable={{
+            expandedRowRender: (record) => (
+              <div>
+                <p><strong>Product Code:</strong> {record.productCode || 'Not available'}</p>
+                <p><strong>Name Alias:</strong> {record.nameAlias || 'Not available'}</p>
+                <p><strong>Material:</strong> {record.material || 'Not available'}</p>
+                <p><strong>GST Rate:</strong> {record.gstRate || 'Not available'}</p>
+              </div>
+            ),
+          }}
+        />      ) : (
+        <Empty 
+          description={
+            <div>
+              <p>No inventory items found</p>
+              {showDebug && (
+                <pre style={{ fontSize: '12px', textAlign: 'left' }}>
+                  Raw data received: {JSON.stringify(inventoryData, null, 2)}
+                </pre>
+              )}
+            </div>
+          } 
+        />
+      )}
 
-      <Table
-        rowKey="_id"
-        columns={[...getColumns(), {
-          title: 'Actions',
-          render: (text, record) => (
-            <Space>
-              <Button size="small" onClick={() => { setEditingItem(record); setFormVisible(true); }}>Edit</Button>
-              <Popconfirm title="Delete this item?" onConfirm={() => handleDelete(record._id)}>
-                <Button size="small" danger>Delete</Button>
-              </Popconfirm>
-            </Space>
-          ),
-        }]}
-        dataSource={data}
-        loading={loading}
+      <InventoryForm 
+        open={formVisible} 
+        onClose={() => setFormVisible(false)} 
+        initialValues={editingItem} 
+        refresh={refresh || (() => window.location.reload())} 
       />
-
-      <InventoryForm open={formVisible} onClose={() => setFormVisible(false)} initialValues={editingItem} refresh={loadData} />
-        
     </>
   );
 }

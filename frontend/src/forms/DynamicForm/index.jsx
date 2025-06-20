@@ -137,16 +137,22 @@ function FormElement({ field, feedback, setFeedback }) {
           type: filedType[field.type] ?? 'any',
         },
       ]}
-    >
-      <Select
+    >      <Select
         showSearch
         defaultValue={field.defaultValue}
-        filterOption={(input, option) =>
-          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-        }
-        filterSort={(optionA, optionB) =>
-          (optionA?.label ?? '').toLowerCase().startsWith((optionB?.label ?? '').toLowerCase())
-        }
+        filterOption={(input, option) => {
+          const label = option?.label || '';
+          const searchString = typeof label === 'string' ? label : String(label || '');
+          const inputString = typeof input === 'string' ? input : String(input || '');
+          return searchString.toLowerCase().includes(inputString.toLowerCase());
+        }}
+        filterSort={(optionA, optionB) => {
+          const labelA = optionA?.label || '';
+          const labelB = optionB?.label || '';
+          const stringA = typeof labelA === 'string' ? labelA : String(labelA || '');
+          const stringB = typeof labelB === 'string' ? labelB : String(labelB || '');
+          return stringA.toLowerCase().startsWith(stringB.toLowerCase());
+        }}
         style={{
           width: '100%',
         }}
@@ -229,14 +235,20 @@ function FormElement({ field, feedback, setFeedback }) {
     >
       <Select
         showSearch
-        defaultValue={field.defaultValue}
-        optionFilterProp="children"
-        filterOption={(input, option) =>
-          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-        }
-        filterSort={(optionA, optionB) =>
-          (optionA?.label ?? '').toLowerCase().startsWith((optionB?.label ?? '').toLowerCase())
-        }
+        defaultValue={field.defaultValue}        optionFilterProp="children"
+        filterOption={(input, option) => {
+          const label = option?.label || '';
+          const searchString = typeof label === 'string' ? label : String(label || '');
+          const inputString = typeof input === 'string' ? input : String(input || '');
+          return searchString.toLowerCase().includes(inputString.toLowerCase());
+        }}
+        filterSort={(optionA, optionB) => {
+          const labelA = optionA?.label || '';
+          const labelB = optionB?.label || '';
+          const stringA = typeof labelA === 'string' ? labelA : String(labelA || '');
+          const stringB = typeof labelB === 'string' ? labelB : String(labelB || '');
+          return stringA.toLowerCase().startsWith(stringB.toLowerCase());
+        }}
         style={{
           width: '100%',
         }}

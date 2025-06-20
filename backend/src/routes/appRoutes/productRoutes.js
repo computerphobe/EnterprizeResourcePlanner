@@ -6,7 +6,7 @@ const authenticateToken = require('@/middleware/authMiddleware');
 const roleMiddleware = require('@/middleware/roleMiddleware');
 
 // Controller
-const controller = require('@/controllers/appControllers/productInventoryController');
+const controller = require('@/controllers/appControllers/inventoryController');
 
 // Error handler wrapper
 const { catchErrors } = require('@/handlers/errorHandlers');

@@ -11,8 +11,8 @@ import {
   Row,
   Col,
   Spin,
-  message,
   DatePicker,
+  App,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 
@@ -47,6 +47,7 @@ const InvoiceForm = ({ subTotal = 0, current = null, form }) => {
 };
 
 const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form }) => {
+  const { message } = App.useApp();
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { last_invoice_number } = useSelector(selectFinanceSettings);
@@ -73,6 +74,28 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
     setTaxTotal(Number.parseFloat(newTaxTotal));
     setTotal(Number.parseFloat(newTotal));
   };
+  useEffect(() => {
+    // Set default values when form is ready
+    if (form && !orderId) {
+      form.setFieldsValue({
+        number: lastNumber,
+        year: currentYear,
+        date: dayjs(),
+        expiredDate: dayjs().add(30, 'days'),
+        status: 'draft',
+        currency: 'USD',
+        taxRate: 0,
+        items: [{ itemName: '', description: '', quantity: 1, price: 0, total: 0 }],
+      });
+      // Trigger initial calculations
+      const newSubTotal = calculateSubTotal([{ quantity: 1, price: 0 }]);
+      setCalculatedSubTotal(newSubTotal);
+      const newTaxTotal = calculate.multiply(newSubTotal, taxRate);
+      const newTotal = calculate.add(newSubTotal, newTaxTotal);
+      setTaxTotal(Number.parseFloat(newTaxTotal));
+      setTotal(Number.parseFloat(newTotal));
+    }
+  }, [form, lastNumber, currentYear, orderId, taxRate]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -121,7 +144,7 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
               : 'Invoice adjusted for returned items. Only "used" quantities are included.';
             message.info(returnMessage);
           }          form.setFieldsValue({
-            client: data.client, // Set the full client object for AutoCompleteAsync
+            client: data.client?._id || data.client, // Ensure we set the ObjectId
             doctorName: data.doctorName,
             hospitalName: data.hospitalName,
             items: formattedItems,
@@ -176,36 +199,30 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
 
   return (
     <>
-      <Row gutter={[12, 0]}>
-        <Col span={8}>
-          <Form.Item name="client" label={translate('Client')} rules={[{ required: true }]}>            <AutoCompleteAsync
+      <Row gutter={[12, 0]}>        <Col span={8}>
+          <Form.Item name="client" label={translate('Client')} rules={[{ required: true, message: translate('Client is required') }]}>
+            <AutoCompleteAsync
               entity="client"
               displayLabels={['name']}
               searchFields="name"
-              onSelect={(client) => {
-                // Handle both object and primitive values
-                const clientValue = typeof client === 'object' && client !== null ? client._id : client;
-                form.setFieldsValue({ client: clientValue });
-              }}
               outputValue="_id"
               withRedirect
               urlToRedirect="/customer"
               redirectLabel={translate('Add New Client')}
             />
           </Form.Item>
-        </Col>
-        <Col span={3}>
-          <Form.Item label={translate('number')} name="number" rules={[{ required: true }]}>
+        </Col>        <Col span={3}>
+          <Form.Item label={translate('number')} name="number" rules={[{ required: true, message: translate('Number is required') }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         </Col>
         <Col span={3}>
-          <Form.Item label={translate('year')} name="year" rules={[{ required: true }]}>
+          <Form.Item label={translate('year')} name="year" rules={[{ required: true, message: translate('Year is required') }]}>
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
         </Col>
         <Col span={5}>
-          <Form.Item label={translate('status')} name="status">
+          <Form.Item label={translate('status')} name="status" rules={[{ required: true, message: translate('Status is required') }]}>
             <Select
               options={[
                 { value: 'draft', label: translate('Draft') },
@@ -216,12 +233,12 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="date" label={translate('Date')} rules={[{ required: true, type: 'object' }]}>
+          <Form.Item name="date" label={translate('Date')} rules={[{ required: true, type: 'object', message: translate('Date is required') }]}>
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
         <Col span={6}>
-          <Form.Item name="expiredDate" label={translate('Expire Date')} rules={[{ required: true, type: 'object' }]}>
+          <Form.Item name="expiredDate" label={translate('Expire Date')} rules={[{ required: true, type: 'object', message: translate('Expire date is required') }]}>
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
@@ -284,9 +301,8 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
           </Col>
         </Row>
 
-        <Row gutter={[12, -5]}>
-          <Col span={4} offset={15}>
-            <Form.Item name="taxRate" rules={[{ required: true }]}>
+        <Row gutter={[12, -5]}>          <Col span={4} offset={15}>
+            <Form.Item name="taxRate" rules={[{ required: true, message: translate('Tax rate is required') }]}>
               <SelectAsync
                 onChange={handleTaxChange}
                 entity="taxes"

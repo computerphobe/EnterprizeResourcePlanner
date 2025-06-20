@@ -44,10 +44,13 @@ const create = async (req, res) => {
 
     // Determine payment status based on discount and total
     const paymentStatus = total <= 0 ? 'paid' : 'unpaid';
-    body['paymentStatus'] = paymentStatus;
-
-    // Track creator admin ID
+    body['paymentStatus'] = paymentStatus;    // Track creator admin ID and organization
     body['createdBy'] = req.admin._id;
+    
+    // Set organizationId - use admin's organizationId or admin's ID if they're the owner
+    body['organizationId'] = req.admin.organizationId || req.admin._id;
+    
+    console.log(`📋 Creating invoice with organizationId: ${body['organizationId']}`);
 
     // Save invoice
     const result = await new Model(body).save();

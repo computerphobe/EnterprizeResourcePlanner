@@ -1,4 +1,4 @@
-const ProductInventory = require('../../../models/appModels/ProductInventory');
+const ProductInventory = require('@/models/appModels/ProductInventory');
 
 // Create inventory item
 exports.create = async (req, res) => {
@@ -11,9 +11,7 @@ exports.create = async (req, res) => {
         success: false,
         message: 'Invalid GST rate. Only 5% or 12% allowed.',
       });
-    }
-
-    const newItem = new ProductInventory(req.body);
+    }    const newItem = new ProductInventory(req.body);
     const savedItem = await newItem.save();
 
     res.status(201).json({
@@ -100,14 +98,18 @@ exports.delete = async (req, res) => {
 };
 
 // List all items
-exports.list = async (_req, res) => {
+exports.list = async (req, res) => {
   try {
-    // ✅ Log the collection name used by this model
-    console.log('📦 MongoDB collection for ProductInventory:', ProductInventory.collection.name);
+    console.log('🟢 ProductInventory list endpoint hit by user:', req.user?.role);
+    console.log('📦 MongoDB collection for Inventory:', ProductInventory.collection.name);
 
     const items = await ProductInventory.find();
+    console.log('🟢 Found items count:', items.length);
+    console.log('🟢 Sample item:', items[0]);
+    
     res.status(200).json({ success: true, result: items });
   } catch (error) {
+    console.error('🔴 ProductInventory list error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch items.',

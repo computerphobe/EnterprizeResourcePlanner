@@ -12,8 +12,7 @@ const RegisterUser = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
-  
-  const onFinish = async (values) => {
+    const onFinish = async (values) => {
     setLoading(true);
     try {
       // No need to explicitly add fields that are already in values
@@ -21,8 +20,15 @@ const RegisterUser = () => {
       const registerData = values;
       
       console.log('registerData.. RegisterUsers.jsx', registerData);
-      await register({ registerData });
-      message.success('User registered successfully!');
+      const response = await register({ registerData });
+      
+      // Show different messages based on whether client was created
+      if (response.result?.client) {
+        message.success(`User and client record created successfully for ${values.role}!`);
+      } else {
+        message.success('User registered successfully!');
+      }
+      
       form.resetFields();
     } catch (error) {
       console.error('Registration error:', error);
@@ -47,16 +53,28 @@ const RegisterUser = () => {
         </Form.Item>
         <Form.Item name="password" label="Password" rules={[{ required: true }]}>
           <Input.Password />
-        </Form.Item>
-        <Form.Item name="role" label="Role" rules={[{ required: true }]}>
+        </Form.Item>        <Form.Item name="role" label="Role" rules={[{ required: true }]}>
           <Select placeholder="Select a role">
             <Option value="owner">Admin</Option>
-            <Option value="doctor">Doctor</Option>            <Option value="hospital">Hospital</Option>
+            <Option value="doctor">Doctor</Option>
+            <Option value="hospital">Hospital</Option>
             <Option value="deliverer">Deliverer</Option>
             <Option value="distributor">Small Distributor</Option>
             <Option value="accountant">Accountant</Option>
           </Select>
         </Form.Item>
+        
+        {/* Additional fields for hospital/doctor roles */}
+        <Form.Item name="phone" label="Phone Number">
+          <Input placeholder="Optional" />
+        </Form.Item>
+        <Form.Item name="address" label="Address">
+          <Input.TextArea rows={2} placeholder="Optional" />
+        </Form.Item>
+        <Form.Item name="country" label="Country">
+          <Input placeholder="Optional" />
+        </Form.Item>
+        
         <Form.Item>
           <Button type="primary" htmlType="submit" loading={loading}>
             Register User

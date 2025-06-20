@@ -1,0 +1,114 @@
+const mongoose = require('mongoose');
+const Invoice = mongoose.model('Invoice');
+const Client = mongoose.model('Client');
+
+/**
+ * Get invoices for a hospital or doctor user
+ * The user's ID is used to find their client record, then fetch invoices for that client
+ */
+const getClientInvoices = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`Fetching invoices for user ID: ${userId}`);    console.log('Looking for client with userId:', userId);
+    
+    // First, find the client record associated with this user
+    // Use new keyword with ObjectId to fix the TypeError
+    try {
+      const client = await Client.findOne({ 
+        userId: new mongoose.Types.ObjectId(userId) 
+      });
+
+      if (!client) {
+        console.log(`No client record found for user ID: ${userId}`);
+        
+        // Try alternate approach - client record might be stored differently
+        // Some systems store the user ID directly as the client ID
+        const clientById = await Client.findById(userId);
+        
+        if (clientById) {
+          console.log(`Found client by direct ID match: ${clientById._id}`);
+          return await fetchInvoicesForClient(clientById, res);
+        }
+        
+        return res.status(200).json({ 
+          success: true, 
+          result: [],
+          message: "No client record found" 
+        });
+      }
+      
+      console.log(`Found client: ${client._id} for user: ${userId}`);
+      return await fetchInvoicesForClient(client, res);
+    } catch (error) {
+      console.error('Error finding client:', error);
+      
+      // Try direct approach if ObjectId conversion fails
+      try {
+        const clientDirect = await Client.findById(userId);
+        if (clientDirect) {
+          console.log(`Found client by direct ID match after error: ${clientDirect._id}`);
+          return await fetchInvoicesForClient(clientDirect, res);
+        }
+      } catch (innerError) {
+        console.error('Error in fallback client search:', innerError);
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        result: [],
+        message: "No client record found or invalid ID format" 
+      });
+    }// Helper function to fetch invoices for a client
+async function fetchInvoicesForClient(client, res) {
+  try {
+    // Now fetch all invoices for this client
+    const invoices = await Invoice.find({
+      client: client._id,
+      removed: false
+    })
+    .populate('payment')
+    .sort({ date: -1 });
+
+    console.log(`Found ${invoices.length} invoices for client ${client._id}`);
+    
+    // Transform data for frontend display
+    const formattedInvoices = invoices.map(invoice => ({
+      _id: invoice._id,
+      billNumber: `INV-${invoice.number}/${invoice.year}`,
+      number: invoice.number,
+      year: invoice.year,
+      createdAt: invoice.date,
+      dueDate: invoice.expiredDate,
+      totalAmount: invoice.total,
+      status: invoice.paymentStatus,
+      paymentStatus: invoice.paymentStatus,
+      invoiceStatus: invoice.status,
+      credit: invoice.credit,
+      currency: invoice.currency,
+      pdf: invoice.pdf,
+      items: invoice.items,
+      client: invoice.client,
+      taxRate: invoice.taxRate,
+      subTotal: invoice.subTotal,
+      taxTotal: invoice.taxTotal,
+      discount: invoice.discount,
+      notes: invoice.notes
+    }));    return res.status(200).json({
+      success: true,
+      result: formattedInvoices,
+      message: formattedInvoices.length > 0 
+        ? `Found ${formattedInvoices.length} invoices` 
+        : "No invoices found"
+    });
+  } catch (error) {
+    console.error('Error fetching invoices for client:', error);
+    return res.status(500).json({
+      success: false,
+      result: null,
+      message: "Error fetching invoices",
+      error: error.message
+    });
+  }
+}
+
+module.exports = getClientInvoices;

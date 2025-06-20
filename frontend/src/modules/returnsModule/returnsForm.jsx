@@ -56,9 +56,12 @@ export default function ReturnsForm({ open, onClose }) {
             showSearch
             placeholder="Select an item"
             optionFilterProp="children"
-            filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-            }
+            filterOption={(input, option) => {
+              const label = option?.label || option?.children || '';
+              const searchString = typeof label === 'string' ? label : String(label || '');
+              const inputString = typeof input === 'string' ? input : String(input || '');
+              return searchString.toLowerCase().includes(inputString.toLowerCase());
+            }}
           >
             {inventoryItems.map(item => (
               <Select.Option key={item._id} value={item._id} label={item.itemName}>

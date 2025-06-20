@@ -1,7 +1,7 @@
 const Order = require('@/models/appModels/Order');
 const Admin = require('@/models/coreModels/Admin');
 const Inventory = require('@/models/appModels/Inventory');
-const Returns = require('@/models/appModels/Returns');
+const Return = require('@/models/appModels/Returns'); // Fixed: Use singular "Return" to match model name
 const mongoose = require('mongoose');
 
 console.log("order controller loaded");
@@ -49,7 +49,7 @@ const delivererOrders = async (req, res) => {
           
           item.substitutions.forEach(sub => {
             orderObj.substitutionSummary.details.push({
-              originalItem: item.inventoryItem.itemName,
+              originalItem: (item.inventoryItem && item.inventoryItem.itemName) ? item.inventoryItem.itemName : 'Unknown Item',
               quantitySubstituted: sub.quantitySubstituted,
               substitutedAt: sub.substitutedAt,
               substitutedBy: sub.substitutedBy?.name || 'Unknown',
@@ -70,26 +70,59 @@ const delivererOrders = async (req, res) => {
 };
 
 const ownerOrders = async (req, res) => {
-  console.log('getOrdersForOwner endpoint hit');
+  console.log('getOrdersForOwner endpoint hit - ENHANCED VERSION');
   try {
     const orders = await Order.find({})
       .sort({ createdAt: -1 })
+      // Populate full doctor details with all fields
       .populate({
         path: 'doctorId',
-        match: { _id: { $ne: null } },
-        select: 'name role email'
+        match: { _id: { $ne: null } }
+        // No select to get all fields
       })
+      // Populate full deliverer details
       .populate({
         path: 'delivererId',
-        match: { _id: { $ne: null } },
-        select: 'name role email'
-      });
+        match: { _id: { $ne: null } }
+        // No select to get all fields
+      })
+      // Populate inventory items with all necessary details
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber manufacturer description'
+      })
+      // Populate any substitutions that might exist
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'itemName category batchNumber expiryDate'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name role email');
 
-    console.log('Owner all orders:', orders);
-    res.json({ success: true, result: orders });
+    console.log(`✅ Owner fetched ${orders.length} orders with enhanced customer and inventory details`);
+    
+    // Add some additional information/processing if needed
+    const enhancedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Add complete item details summary
+      if (orderObj.items && orderObj.items.length > 0) {
+        orderObj.itemsSummary = {
+          totalItems: orderObj.items.length,
+          categories: [...new Set(orderObj.items
+            .filter(item => item.inventoryItem && item.inventoryItem.category)
+            .map(item => item.inventoryItem.category))]
+        };
+      }
+      
+      return orderObj;
+    });
+
+    res.json({ success: true, result: enhancedOrders });
   } catch (err) {
-    console.log(err);
-    console.error('Error fetching all orders for owner:', err);
+    console.error('Error fetching enhanced orders for owner:', err);
     res.status(500).json({ success: false, message: err.message || 'Internal server error' });
   }
 };
@@ -122,14 +155,18 @@ const assignDeliverer = async (req, res) => {
 
 const getPendingInvoices = async (req, res) => {
   try {
+    // Only fetch COMPLETED orders that don't have invoices yet
     const orders = await Order.find({
       isDeleted: false,
+      status: 'completed', // Only completed orders should be pending for invoice
       invoiceId: { $exists: false },
     })
       .populate('doctorId', 'name')
       .populate('delivererId', 'name')
       .populate('items.inventoryItem', 'itemName')
-      .sort({ createdAt: -1 });
+      .sort({ completedAt: -1, createdAt: -1 });
+
+    console.log(`Found ${orders.length} completed orders pending invoice`);
 
     // Add return information to each order
     const ordersWithReturnInfo = await Promise.all(orders.map(async (order) => {
@@ -141,11 +178,16 @@ const getPendingInvoices = async (req, res) => {
         totalOriginalQuantity += item.quantity;
 
         // Find returns for this item in this order
-        const returnedItems = await Returns.find({
-          originalItemId: item.inventoryItem._id,
-          returnOrder: order._id,
-          status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
-        });
+        let returnedItems = [];
+        if (item.inventoryItem && item.inventoryItem._id) {
+          returnedItems = await Return.find({
+            originalItemId: item.inventoryItem._id,
+            returnOrder: order._id,
+            status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
+          });
+        } else {
+          console.warn('Skipping return lookup: missing inventoryItem on order', order._id, 'item:', item._id);
+        }
 
         const itemReturnedQuantity = returnedItems.reduce((sum, returnItem) => {
           return sum + (returnItem.returnedQuantity || 0);
@@ -210,29 +252,62 @@ const getOrderWithSubstitutions = async (req, res) => {
     const { orderId } = req.params;
     console.log('Fetching order with substitutions for orderId:', orderId);
 
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      console.error('Invalid order ID format:', orderId);
+      return res.status(400).json({ success: false, message: 'Invalid order ID format' });
+    }
+
+    console.log('Looking for order with ID:', orderId);
     const order = await Order.findById(orderId)
-      .populate('doctorId', 'name role email')
-      .populate('delivererId', 'name role email')
+      // Fully populate doctorId with all fields for complete customer data
+      .populate('doctorId')
+      .populate('delivererId')
       .populate({
         path: 'items.inventoryItem',
-        select: 'itemName category price expiryDate batchNumber'
-      })      .populate({
-        path: 'items.substitutions.returnId',  // Fixed: use returnId to match schema
-        populate: {
-          path: 'originalItemId',
-          select: 'orderNumber'
-        }
+        select: 'itemName category price expiryDate batchNumber manufacturer'
       })
-      .populate('items.substitutions.substitutedBy', 'name');
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: [
+          {
+            path: 'originalItemId',
+            select: 'itemName category batchNumber expiryDate'
+          },
+          {
+            path: 'returnOrder',
+            select: 'orderNumber'
+          }
+        ]
+      })
+      .populate('items.substitutions.substitutedBy', 'name role email');
 
     if (!order) {
+      console.error('Order not found with ID:', orderId);
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    console.log('✅ Successfully retrieved order with ID:', orderId);
+    console.log('✅ Order type:', order.orderType);
+    console.log('✅ Order number:', order.orderNumber);
+    console.log('✅ Items count:', order.items?.length || 0);
+    
+    // Log substitution data for debugging
+    if (order.items) {
+      let totalSubstitutions = 0;
+      order.items.forEach(item => {
+        if (item.substitutions && item.substitutions.length > 0) {
+          console.log(`Item ${item.inventoryItem.itemName} has ${item.substitutions.length} substitutions`);
+          totalSubstitutions += item.substitutions.length;
+        }
+      });
+      console.log(`Total substitution records: ${totalSubstitutions}`);
     }
 
     return res.json({ success: true, result: order });
   } catch (error) {
     console.error('Error fetching order with substitutions:', error);
-    return res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 };
 
@@ -252,13 +327,13 @@ const getOrderWithInventoryDetails = async (req, res) => {
       const inventoryItem = await Inventory.findById(item.inventoryItem._id);
       
       // Find available returns for this inventory item
-      const availableReturns = await Returns.find({
+      const availableReturns = await Return.find({
         originalItemId: item.inventoryItem._id,
         status: 'Available for reuse'
       }).populate('originalItemId', 'itemName category price');
 
       // Calculate total returned quantity for this order item
-      const returnedItems = await Returns.find({
+      const returnedItems = await Return.find({
         originalItemId: item.inventoryItem._id,
         returnOrder: orderId,
         status: { $in: ['Available for reuse', 'Used', 'Damaged', 'Disposed'] }
@@ -355,7 +430,7 @@ const getAvailableReturnedItems = async (req, res) => {
     const { inventoryItemId } = req.params;
     console.log('Fetching available returns for inventory item:', inventoryItemId);
 
-    const availableReturns = await Returns.find({
+    const availableReturns = await Return.find({
       originalItemId: inventoryItemId,
       status: 'Available for reuse',
       returnedQuantity: { $gt: 0 }
@@ -469,7 +544,7 @@ const substituteOrderItem = async (req, res) => {
     }
 
     // Find the return item
-    const returnItem = await Returns.findById(returnItemId)
+    const returnItem = await Return.findById(returnItemId)
       .populate('originalItemId')
       .populate('returnOrder', 'orderNumber');
     
@@ -577,18 +652,17 @@ const markOrderAsPickup = async (req, res) => {
     const { photo, notes, location } = req.body;
     const delivererId = req.user.id;
     
-    console.log('Order pickup confirmation for:', { orderId, delivererId });
-    
-    // Validate required photo
-    if (!photo) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Photo verification is required for pickup confirmation' 
-      });
-    }
+    console.log('=== ORDER PICKUP VERIFICATION ===');
+    console.log('Order ID:', orderId);
+    console.log('Deliverer ID:', delivererId);
+    console.log('Photo received:', photo ? `YES (${photo.length} chars)` : 'NO');
+    console.log('Photo starts with data:image:', photo ? photo.startsWith('data:image/') : 'N/A');
+    console.log('Notes:', notes);
+    console.log('Location:', location);
     
     // Validate base64 photo format
-    if (!photo.startsWith('data:image/')) {
+    if (photo && typeof photo === 'string' && !photo.startsWith('data:image/')) {
+      console.log('❌ Invalid photo format detected');
       return res.status(400).json({ 
         success: false, 
         message: 'Invalid photo format. Please provide a valid image.' 
@@ -598,11 +672,13 @@ const markOrderAsPickup = async (req, res) => {
     // Find the order
     const order = await Order.findById(orderId);
     if (!order) {
+      console.log('❌ Order not found');
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     
     // Verify the order is assigned to this deliverer
     if (order.delivererId?.toString() !== delivererId) {
+      console.log('❌ Order not assigned to this deliverer');
       return res.status(403).json({ 
         success: false, 
         message: 'This order is not assigned to you' 
@@ -611,6 +687,7 @@ const markOrderAsPickup = async (req, res) => {
     
     // Verify order is in correct status for pickup
     if (order.status !== 'pending' && order.status !== 'processing') {
+      console.log('❌ Order not in correct status for pickup, current status:', order.status);
       return res.status(400).json({ 
         success: false, 
         message: 'Order is not available for pickup' 
@@ -627,9 +704,15 @@ const markOrderAsPickup = async (req, res) => {
       location: location || null
     };
     
+    console.log('✅ Saving pickup verification data...');
     await order.save();
     
-    console.log('Order marked as picked up with verification:', orderId);
+    console.log('✅ Order marked as picked up with verification');
+    console.log('Pickup verification saved:', {
+      hasPhoto: !!order.pickupVerification.photo,
+      photoLength: order.pickupVerification.photo?.length || 0,
+      timestamp: order.pickupVerification.timestamp
+    });
     
     res.json({ 
       success: true, 
@@ -638,7 +721,7 @@ const markOrderAsPickup = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error marking order as picked up:', error);
+    console.error('❌ Error marking order as picked up:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error',
@@ -654,7 +737,16 @@ const markOrderAsDelivered = async (req, res) => {
     const { photo, customerSignature, customerName, notes, location } = req.body;
     const delivererId = req.user.id;
     
-    console.log('Order delivery confirmation for:', { orderId, delivererId });
+    console.log('=== ORDER DELIVERY VERIFICATION ===');
+    console.log('Order ID:', orderId);
+    console.log('Deliverer ID:', delivererId);
+    console.log('Photo received:', photo ? `YES (${photo.length} chars)` : 'NO');
+    console.log('Photo starts with data:image:', photo ? photo.startsWith('data:image/') : 'N/A');
+    console.log('Customer signature received:', customerSignature ? `YES (${customerSignature.length} chars)` : 'NO');
+    console.log('Customer signature starts with data:image:', customerSignature ? customerSignature.startsWith('data:image/') : 'N/A');
+    console.log('Customer name:', customerName);
+    console.log('Notes:', notes);
+    console.log('Location:', location);
     
     // Validate required verification data
     if (!photo) {
@@ -780,7 +872,7 @@ const getDeliveredOrdersHistory = async (req, res) => {
           
           item.substitutions.forEach(sub => {
             orderObj.substitutionSummary.details.push({
-              originalItem: item.inventoryItem.itemName,
+              originalItem: (item.inventoryItem && item.inventoryItem.itemName) ? item.inventoryItem.itemName : 'Unknown Item',
               quantitySubstituted: sub.quantitySubstituted,
               substitutedAt: sub.substitutedAt,
               substitutedBy: sub.substitutedBy?.name || 'Unknown',
@@ -814,6 +906,10 @@ const hospitalOrders = async (req, res) => {
         path: 'delivererId',
         match: { _id: { $ne: null } },
         select: 'name role email'
+      })
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price productCode nameAlias material gstRate'
       });
 
     console.log('Hospital orders:', orders.length);
@@ -852,10 +948,12 @@ const createHospitalOrder = async (req, res) => {
           message: 'Invalid purchase type. Must be either "buy" or "rent"'
         });
       }
-    }
-
-    // Create the order
+    }    // Create the order with orderNumber explicitly set
+    const orderCount = await Order.countDocuments();
+    const orderNumber = `DO${String(orderCount + 1).padStart(6, '0')}`;
+    
     const order = new Order({
+      orderNumber, // Set explicitly to avoid the error
       items,
       totalAmount: totalAmount || 0,
       status: 'pending',
@@ -866,19 +964,240 @@ const createHospitalOrder = async (req, res) => {
       createdBy: hospitalId
     });
 
-    await order.save();
-    console.log('Hospital order created:', order);
-    res.json({ success: true, result: order });
+    try {
+      await order.save();
+      console.log('Hospital order created:', order);
+      res.json({ success: true, result: order });
+    } catch (saveError) {
+      console.error('Error saving hospital order:', saveError.message);
+      res.status(500).json({ success: false, message: saveError.message || 'Error saving order' });
+    }
   } catch (error) {
     console.error('Error creating hospital order:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 };
 
-module.exports = {
-  assignDeliverer,
-  delivererOrders,
-  ownerOrders,
+// Get a single order by ID (basic endpoint for fallback)
+const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    console.log('Fetching order by ID:', orderId);
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      console.error('Invalid order ID format:', orderId);
+      return res.status(400).json({ success: false, message: 'Invalid order ID format' });
+    }
+
+    const order = await Order.findById(orderId)
+      .populate('doctorId')
+      .populate('delivererId')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber manufacturer'
+      });
+
+    if (!order) {
+      console.error('Order not found with ID:', orderId);
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    console.log('✅ Successfully retrieved basic order with ID:', orderId);
+    return res.json({ success: true, result: order });
+  } catch (error) {
+    console.error('Error fetching order by ID:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Internal server error' });
+  }
+};
+
+const doctorOrders = async (req, res) => {
+  console.log('getDoctorOrders endpoint hit');
+  try {
+    const doctorId = req.user.id;
+    console.log('Fetching orders for doctor:', doctorId);
+
+    const orders = await Order.find({ 
+      doctorId: doctorId,
+      isDeleted: false 
+    })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'delivererId',
+        match: { _id: { $ne: null } },
+        select: 'name role email'
+      })
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'name itemName productName sku code description price'
+      });
+
+    console.log('Doctor orders found:', orders.length);
+    res.json({ success: true, orders: orders });
+  } catch (error) {
+    console.error('Error fetching doctor orders:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+const createDoctorOrder = async (req, res) => {
+  console.log('createDoctorOrder endpoint hit');
+  try {
+    const { items, totalAmount, notes, orderNotes } = req.body;
+    const doctorId = req.user.id;
+
+    console.log('Doctor order request:', { items, totalAmount, doctorId });
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order must contain at least one item' 
+      });
+    }
+
+    // Validate inventoryItem IDs and purchase types
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!mongoose.Types.ObjectId.isValid(item.inventoryItem)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Invalid inventory item ID for item ${i + 1}` 
+        });
+      }
+      
+      if (!item.purchaseType || !['regular', 'emergency'].includes(item.purchaseType)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid purchase type for item ${i + 1}. Must be either "regular" or "emergency"`
+        });
+      }
+
+      if (!item.quantity || item.quantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity for item ${i + 1}. Must be greater than 0`
+        });
+      }
+    }
+
+    // Create the order with orderNumber
+    const orderCount = await Order.countDocuments();
+    const orderNumber = `DO${String(orderCount + 1).padStart(6, '0')}`;
+    
+    const order = new Order({
+      orderNumber,
+      items: items.map(item => ({
+        inventoryItem: item.inventoryItem,
+        quantity: item.quantity,
+        price: item.price || 0,
+        purchaseType: item.purchaseType,
+        notes: item.notes || ''
+      })),
+      totalAmount: totalAmount || 0,
+      status: 'pending',
+      orderType: 'doctor',
+      doctorId: doctorId,
+      doctorName: req.user.name || 'Unknown Doctor',
+      hospitalName: req.user.hospitalName || 'Unknown Hospital',
+      createdBy: doctorId,
+      notes: notes || orderNotes || ''
+    });
+
+    await order.save();
+    console.log('Doctor order created successfully:', order.orderNumber);
+    
+    // Populate the created order before sending response
+    const populatedOrder = await Order.findById(order._id)
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'name itemName productName sku code description price'
+      });
+
+    res.json({ 
+      success: true, 
+      result: populatedOrder,
+      message: `Order ${order.orderNumber} created successfully with ${items.length} item(s)`
+    });
+  } catch (error) {
+    console.error('Error creating doctor order:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error creating order' 
+    });
+  }
+};
+
+// NEW: Get all completed orders for return collection (any deliverer can collect returns)
+const getAllCompletedOrdersForReturns = async (req, res) => {
+  try {
+    console.log('Fetching all completed orders for return collection');
+
+    const completedOrders = await Order.find({ 
+      status: 'completed',
+      deliveredAt: { $exists: true }
+    })
+      .populate('doctorId', 'name role email')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber'
+      })
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'itemName category batchNumber expiryDate'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name')
+      .sort({ deliveredAt: -1 });
+
+    console.log('All completed orders found:', completedOrders.length);
+    
+    // Add substitution summary for each completed order
+    const ordersWithSubstitutionDetails = completedOrders.map(order => {
+      const orderObj = order.toObject();
+      
+      // Add substitution counts and details
+      orderObj.substitutionSummary = {
+        totalSubstitutions: 0,
+        itemsWithSubstitutions: 0,
+        details: []
+      };
+
+      // Add hasSubstitutions flag for easy checking
+      orderObj.hasSubstitutions = false;
+
+      orderObj.items.forEach(item => {
+        if (item.substitutions && item.substitutions.length > 0) {
+          orderObj.hasSubstitutions = true;
+          orderObj.substitutionSummary.itemsWithSubstitutions++;
+          orderObj.substitutionSummary.totalSubstitutions += item.substitutions.length;
+          
+          item.substitutions.forEach(sub => {
+            orderObj.substitutionSummary.details.push({
+              originalItem: (item.inventoryItem && item.inventoryItem.itemName) ? item.inventoryItem.itemName : 'Unknown Item',
+              quantitySubstituted: sub.quantitySubstituted,
+              substitutedAt: sub.substitutedAt,
+              substitutedBy: sub.substitutedBy?.name || 'Unknown',
+              returnedItem: sub.returnId?.originalItemId?.itemName || 'Unknown Item'
+            });
+          });
+        }
+      });
+
+      return orderObj;
+    });
+
+    res.json({ success: true, result: ordersWithSubstitutionDetails });
+  } catch (error) {
+    console.error('Error fetching all completed orders for returns:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+module.exports = {  assignDeliverer,
+  delivererOrders,  ownerOrders,
   getPendingInvoices,
   read,
   getOrderWithSubstitutions,
@@ -889,11 +1208,11 @@ module.exports = {
   markOrderAsPickup,
   markOrderAsDelivered,
   getDeliveredOrdersHistory,
-};
-module.exports = {
-  assignDeliverer,
-  delivererOrders,
-  ownerOrders,
+  getAllCompletedOrdersForReturns,
   hospitalOrders,
-  createHospitalOrder
+  createHospitalOrder,
+  doctorOrders,
+  createDoctorOrder,
+  getOrderById, // Expose the new fallback endpoint
+  getAllCompletedOrdersForReturns, // NEW: Endpoint to get all completed orders for return collection
 };

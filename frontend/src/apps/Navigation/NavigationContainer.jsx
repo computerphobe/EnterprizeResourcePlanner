@@ -33,7 +33,10 @@ import {
   OrderedListOutlined,
   QuestionCircleFilled,
   LinkedinFilled,
+  CarOutlined,
   HistoryOutlined,
+  FileTextOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -145,11 +148,15 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'Orders',
           label: <Link to={'/order'}>{translate('order')}</Link>,
           icon: <OrderedListOutlined />
-        },
-        {
+        },        {
           key: 'history',
           label: <Link to={'/system-history'}>{translate('System History')}</Link>,
           icon: <HistoryOutlined />
+        },
+        {
+          key: 'invoice-debugger',
+          label: <Link to={'/admin/invoice-debugger'}>Invoice Debugger</Link>,
+          icon: <FileTextOutlined />
         },
       ],
       doctor: [
@@ -239,11 +246,10 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'delivery-pickup',
           icon: <FileSyncOutlined />,
           label: <Link to={'/pickup'}>{translate('pickup_confirmation')}</Link>,
-        },
-        {
+        },        {
           key: 'delivery-confirmation',
           icon: <ReconciliationOutlined />,
-          label: <Link to={'/confirmation'}>{translate('delivery_confirmation')}</Link>,
+          label: <Link to={'/confirmation'}>{translate('collect_returns')}</Link>,
         },
         {
           key: 'delivery-history',

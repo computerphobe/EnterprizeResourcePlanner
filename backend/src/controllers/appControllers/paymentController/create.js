@@ -50,27 +50,40 @@ const create = async (req, res) => {
       payment._id,
       { pdf: fileId },
       { new: true }
-    );
-
-    // Calculate new payment status
+    );    // Calculate new payment status
     const updatedCredit = calculate.add(previousCredit, amount);
     let paymentStatus = 'unpaid';
     if (calculate.sub(total, discount) === updatedCredit) {
       paymentStatus = 'paid';
     } else if (updatedCredit > 0) {
       paymentStatus = 'partially';
-    }
+    }    // Determine invoice status update
+    // When payment is recorded, ALWAYS change status from 'pending' to 'sent'
+    console.log('📊 Current Invoice Status before update:', currentInvoice.status);
+    console.log('📊 Current Invoice Payment Status before update:', currentInvoice.paymentStatus);
+    
+    // Always update to "sent" status when a payment is recorded
+    // This ensures the invoice appears in the client's bill section
+    let invoiceStatus = 'sent';
+    
+    console.log('✅ Updating invoice status to "sent" due to payment recording');
 
-    // Update invoice with new payment info
-    await InvoiceModel.findByIdAndUpdate(
+    // Update invoice with new payment info and status
+    const updatedInvoice = await InvoiceModel.findByIdAndUpdate(
       invoiceId,
       {
         $push: { payment: payment._id },
         $inc: { credit: amount },
-        $set: { paymentStatus },
+        $set: { 
+          paymentStatus,
+          status: invoiceStatus
+        },
       },
       { new: true, runValidators: true }
     );
+    
+    console.log('📊 Updated Invoice Status:', updatedInvoice.status);
+    console.log('📊 Updated Invoice Payment Status:', updatedInvoice.paymentStatus);
 
     // Create general ledger entry for this payment
     // Payments are usually debit entries on cash/bank (asset), credit on revenue or accounts receivable.

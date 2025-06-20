@@ -42,8 +42,6 @@ const DeliveryConfirmation = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [photos, setPhotos] = useState({});
-  const [confirmed, setConfirmed] = useState({});
   
   // Return collection states
   const [returnModalVisible, setReturnModalVisible] = useState(false);
@@ -56,7 +54,6 @@ const DeliveryConfirmation = () => {
   
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
-
   // Return reasons options
   const returnReasons = [
     'Expired product',
@@ -68,40 +65,59 @@ const DeliveryConfirmation = () => {
     'Excess inventory',
     'Other'
   ];
-  useEffect(() => {
-    if (!token) return setLoading(false);
 
-    fetch('/api/order/current', {  // Changed to use order endpoint instead of deliveries
+  useEffect(() => {
+    if (!token) return setLoading(false);    // Fetch all completed orders for return collection (not just from current deliverer)
+    fetch('/api/order/completed-for-returns', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
       .then(data => {
+        console.log('🔍 Raw completed orders response:', data);
         if (data.success) {
-          // Filter orders that are picked up or completed for delivery/return collection
-          const deliveryOrders = data.result.filter(order => 
-            ['picked_up', 'completed'].includes(order.status)
+          const allOrders = data.result || [];
+          console.log(`📦 Total orders from API: ${allOrders.length}`);
+          
+          // Debug each order
+          allOrders.forEach((order, index) => {
+            console.log(`Order ${index + 1}:`, {
+              id: order._id,
+              orderNumber: order.orderNumber,
+              status: order.status,
+              deliveredAt: order.deliveredAt,
+              hasDeliveryVerification: !!order.deliveryVerification,
+              hasPhoto: !!order.deliveryVerification?.photo
+            });
+          });
+
+          // Only show completed orders that can have returns collected
+          const completedOrders = allOrders.filter(order => 
+            order.status === 'completed' && order.deliveredAt
           );
-          setOrders(deliveryOrders);
+          setOrders(completedOrders);
+          console.log(`✅ Filtered to ${completedOrders.length} completed orders for return collection`);
         } else {
+          console.log('❌ API returned error:', data.message);
           setOrders([]);
         }
         setLoading(false);
       })
       .catch(err => {
-        console.error('Failed to fetch delivery orders', err);
+        console.error('Failed to fetch completed orders for return collection', err);
         setLoading(false);
       });
   }, [token]);
-
   // Handle photo upload for delivery confirmation
   const handlePhotoChange = ({ file }, orderId) => {
     const realFile = file.originFileObj || file;
     if (realFile) {
+      // Safely convert orderId to string
+      const orderIdStr = orderId && typeof orderId === 'object' ? orderId._id || orderId.toString() : String(orderId || '');
       setPhotos(prev => ({
         ...prev,
-        [String(orderId)]: realFile,
+        [orderIdStr]: realFile,
       }));
-      messageApi.success(`Photo selected for Order ID: ${orderId}`);
+      messageApi.success(`Photo selected for Order ID: ${orderIdStr}`);
     }
   };
 
@@ -288,8 +304,7 @@ const DeliveryConfirmation = () => {
       console.error('Error confirming delivery:', err);
       messageApi.error('Something went wrong while confirming delivery.');
     }
-  };
-  const columns = [
+  };  const columns = [
     {
       title: 'Order Number',
       dataIndex: 'orderNumber',
@@ -308,16 +323,16 @@ const DeliveryConfirmation = () => {
       render: (hospital) => hospital || '-',
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const colors = {
-          picked_up: 'orange',
-          completed: 'green'
-        };
-        return <Tag color={colors[status] || 'default'}>{status?.toUpperCase()}</Tag>;
-      },
+      title: 'Delivered At',
+      dataIndex: 'deliveredAt',
+      key: 'deliveredAt',
+      render: (time) => time ? new Date(time).toLocaleString() : '-',
+    },
+    {
+      title: 'Total Amount',
+      dataIndex: 'totalAmount',
+      key: 'totalAmount',
+      render: (amount) => `₹${amount?.toFixed(2) || '0.00'}`,
     },
     {
       title: 'Items Count',
@@ -329,76 +344,30 @@ const DeliveryConfirmation = () => {
     {
       title: 'Actions',
       key: 'action',
-      render: (_, record) => {
-        const orderId = String(record._id);
-        const photo = photos[orderId];
-        const isConfirmed = confirmed[orderId];
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {/* Delivery Confirmation Section */}
-            {record.status === 'picked_up' && (
-              <>
-                <Upload
-                  beforeUpload={() => false}
-                  onChange={(info) => handlePhotoChange(info, orderId)}
-                  accept="image/*"
-                  showUploadList={false}
-                  disabled={isConfirmed}
-                >
-                  <Button icon={<UploadOutlined />} disabled={isConfirmed} size="small">
-                    {photo ? 'Photo Ready' : 'Upload Delivery Photo'}
-                  </Button>
-                </Upload>
-
-                {photo && !isConfirmed && (
-                  <div style={{ fontSize: '0.75rem', color: '#555' }}>
-                    Selected: {photo.name}
-                  </div>
-                )}
-
-                <Button
-                  type="primary"
-                  disabled={!photo || isConfirmed}
-                  onClick={() => confirmDelivery(orderId)}
-                  size="small"
-                >
-                  {isConfirmed ? 'Delivered' : 'Confirm Delivery'}
-                </Button>
-              </>
-            )}
-
-            {/* Return Collection Section */}
-            <Divider style={{ margin: '4px 0' }} />
-            <Button
-              type="default"
-              icon={<UndoOutlined />}
-              onClick={() => openReturnModal(record)}
-              size="small"
-              disabled={isConfirmed}
-            >
-              Collect Returns
-            </Button>
-
-            {record.status === 'completed' && (
-              <Tag color="green" style={{ margin: 0 }}>
-                <CheckCircleOutlined /> Completed
-              </Tag>
-            )}
-          </div>
-        );
-      },
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            icon={<UndoOutlined />}
+            onClick={() => openReturnModal(record)}
+          >
+            Collect Returns
+          </Button>
+          <Tag color="green">
+            <CheckCircleOutlined /> Completed
+          </Tag>
+        </Space>
+      ),
     },
   ];
   return (
     <div style={{ padding: 24 }}>
       {/* Place contextHolder here so messages can render */}
-      {contextHolder}
-      <Title level={2}>Delivery & Return Collection</Title>
+      {contextHolder}      <Title level={2}>Collect Returns</Title>
       
       <Alert
-        message="Delivery & Return Collection Instructions"
-        description="Complete deliveries by uploading delivery photos. You can also collect returns from customers during your visits."
+        message="Return Collection Instructions"
+        description="Collect returns from completed orders. Upload photos and get customer signatures for all return items."
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
@@ -407,7 +376,7 @@ const DeliveryConfirmation = () => {
       {loading ? (
         <Alert message="Loading orders..." type="info" />
       ) : orders.length === 0 ? (
-        <Alert message="No orders available for delivery or return collection" type="warning" />
+        <Alert message="No completed orders available for return collection" type="warning" />
       ) : (
         <Table
           dataSource={orders}

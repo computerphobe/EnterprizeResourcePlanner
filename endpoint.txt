@@ -1,0 +1,36 @@
+﻿// Direct invoice lookup by client ID (for debugging/testing)
+router.route("/invoices/by-client/:clientId")
+  .get(
+    authenticateToken,
+    roleMiddleware(["owner", "admin", "accountant"]),
+    async (req, res) => {
+      try {
+        const { clientId } = req.params;
+        console.log(` Manual invoice lookup for client: ${clientId}`);
+        
+        const Invoice = mongoose.model("Invoice");
+        const invoices = await Invoice.find({ 
+          client: clientId,
+          removed: false 
+        })
+        .populate("payment")
+        .populate("client", "name email")
+        .sort({ date: -1 });
+        
+        console.log(`Found ${invoices.length} invoices for client ${clientId}`);
+        
+        res.status(200).json({
+          success: true,
+          result: invoices,
+          message: `Found ${invoices.length} invoices`
+        });
+      } catch (error) {
+        console.error("Error in direct invoice lookup:", error);
+        res.status(500).json({
+          success: false,
+          message: "Error fetching invoices",
+          error: error.message
+        });
+      }
+    }
+  );

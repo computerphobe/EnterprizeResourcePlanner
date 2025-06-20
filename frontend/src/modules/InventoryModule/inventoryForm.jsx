@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, message } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, message } from 'antd';
 import { createinventory, updateinventory } from './service';
+
+const { Option } = Select;
 
 export default function InventoryForm({ open, onClose, initialValues, refresh }) {
   const [form] = Form.useForm();
@@ -8,7 +10,7 @@ export default function InventoryForm({ open, onClose, initialValues, refresh })
   // Reset form on modal open
   useEffect(() => {
     if (open) {
-      form.setFieldsValue(initialValues || { itemName: '', quantity: 0, price: 0, category: '' });
+      form.setFieldsValue(initialValues || { itemName: '', quantity: 0, price: 0, category: '', productCode: '', nameAlias: '', material: '', gstRate: 5 });
     }
   }, [open, initialValues]);
 
@@ -50,6 +52,23 @@ export default function InventoryForm({ open, onClose, initialValues, refresh })
       >
         <Form.Item name="itemName" label="Item Name" rules={[{ required: true }]}>
           <Input />
+        </Form.Item>
+
+        <Form.Item name="productCode" label="Product Code" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+
+        <Form.Item name="nameAlias" label="Name Alias" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+
+        <Form.Item name="material" label="Material" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>        <Form.Item name="gstRate" label="GST Rate" rules={[{ required: true }]}>
+          <Select placeholder="Select GST Rate">
+            <Option value={5}>5%</Option>
+            <Option value={12}>12%</Option>
+          </Select>
         </Form.Item>
 
         <Form.Item name="quantity" label="Quantity" rules={[{ required: true }]}>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tabs, Tag, Button, Space, Typography, Card, Row, Col, Statistic } from 'antd';
+import { Table, Tabs, Tag, Button, Space, Typography, Card, Row, Col, Statistic, Modal, Descriptions, List, Divider } from 'antd';
 import { FilePdfOutlined, EyeOutlined, CheckCircleOutlined, ClockCircleOutlined, DollarOutlined, ShoppingOutlined, CarOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const History = () => {
   const [history, setHistory] = useState({
@@ -13,13 +13,15 @@ const History = () => {
     orders: []
   });
   const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [modalType, setModalType] = useState('');
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
 
   useEffect(() => {
     fetchHistory();
   }, []);
-
   const fetchHistory = async () => {
     try {
       // Fetch all history data
@@ -53,9 +55,22 @@ const History = () => {
     }
   };
 
+  // Open details modal
+  const openDetailsModal = (record, type) => {
+    setSelectedRecord(record);
+    setModalType(type);
+    setDetailsModalVisible(true);
+  };
+
+  // Close details modal
+  const closeDetailsModal = () => {
+    setSelectedRecord(null);
+    setModalType('');
+    setDetailsModalVisible(false);
+  };
+
   const handleViewDetails = (record, type) => {
-    // Implement view details functionality
-    console.log('View details:', record, type);
+    openDetailsModal(record, type);
   };
 
   const handleDownloadInvoice = (record) => {
@@ -298,13 +313,111 @@ const History = () => {
       ),
     },
   ];
-
   return (
     <div className="p-4">
       <Title level={2}>History</Title>
       <div className="bg-white rounded-lg shadow p-6">
         <Tabs defaultActiveKey="salesbill" items={items} />
       </div>
+
+      {/* Details Modal */}
+      <Modal
+        title={
+          <div>
+            <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+            <span>{modalType === 'order' ? 'Order Details' : modalType === 'delivery' ? 'Delivery Details' : 'Sales Bill Details'}</span>
+          </div>
+        }
+        open={detailsModalVisible}
+        onCancel={closeDetailsModal}
+        footer={[
+          <Button key="close" onClick={closeDetailsModal}>
+            Close
+          </Button>
+        ]}
+        width={800}
+      >
+        {selectedRecord && (
+          <div>
+            {/* Basic Information */}
+            <Card title="Basic Information" size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="ID">
+                      <Text code>{selectedRecord._id?.slice(-8)}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Date">
+                      {new Date(selectedRecord.createdAt).toLocaleDateString()}
+                    </Descriptions.Item>
+                    {selectedRecord.status && (
+                      <Descriptions.Item label="Status">
+                        <Tag color={selectedRecord.status === 'completed' ? 'green' : 'blue'}>
+                          {selectedRecord.status?.toUpperCase()}
+                        </Tag>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </Col>
+                <Col span={12}>
+                  <Descriptions column={1} size="small">
+                    {selectedRecord.totalAmount && (
+                      <Descriptions.Item label="Total Amount">
+                        <Text strong>${selectedRecord.totalAmount.toFixed(2)}</Text>
+                      </Descriptions.Item>
+                    )}
+                    {modalType === 'order' && selectedRecord.orderNumber && (
+                      <Descriptions.Item label="Order Number">
+                        <Tag color="blue">{selectedRecord.orderNumber}</Tag>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Items List */}
+            {selectedRecord.items && selectedRecord.items.length > 0 && (
+              <Card title="Items" size="small" style={{ marginBottom: 16 }}>
+                <List
+                  dataSource={selectedRecord.items}
+                  renderItem={(item, index) => (
+                    <List.Item>
+                      <div style={{ width: '100%' }}>
+                        <Row justify="space-between" align="middle">
+                          <Col>
+                            <Text strong>{item.name || item.itemName || `Item ${index + 1}`}</Text>
+                            {item.quantity && <Text type="secondary"> - Qty: {item.quantity}</Text>}
+                          </Col>
+                          <Col>
+                            {item.price && <Text>${item.price.toFixed(2)}</Text>}
+                          </Col>
+                        </Row>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            )}
+
+            {/* Additional Information */}
+            {(selectedRecord.notes || selectedRecord.deliveryAddress) && (
+              <Card title="Additional Information" size="small">
+                {selectedRecord.notes && (
+                  <Descriptions.Item label="Notes" span={3}>
+                    {selectedRecord.notes}
+                  </Descriptions.Item>
+                )}
+                {selectedRecord.deliveryAddress && (
+                  <Descriptions.Item label="Delivery Address" span={3}>
+                    {selectedRecord.deliveryAddress}
+                  </Descriptions.Item>
+                )}
+              </Card>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
