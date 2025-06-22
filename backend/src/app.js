@@ -27,7 +27,11 @@ const app = express();
 // CORS setup - allow requests from frontend
 app.use(
   cors({
-    origin: 'http://localhost:3000', // Replace with your frontend URL if different
+    origin: [
+      'http://localhost:3000',
+      'https://shashwatimplant.onrender.com',
+      'https://shashwatimpant.onrender.com'
+    ],
     credentials: true,
   })
 );
