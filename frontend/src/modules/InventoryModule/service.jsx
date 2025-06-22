@@ -23,7 +23,7 @@ const includeTokenManually = () => {
 export const getinventory = async (params = {}) => {
   try {
     includeTokenManually();
-    const response = await axios.get(`https://shashwatbackend.onrender.com/api/inventory/list`);
+    const response = await axios.get(`${API_BASE_URL}/inventory/list`);
     
     console.log('Fetched Inventory Direct:', response.data);
     if (response.data.success && Array.isArray(response.data.result)) {

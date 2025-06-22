@@ -1,11 +1,20 @@
 export const API_BASE_URL =
   import.meta.env.PROD || import.meta.env.VITE_DEV_REMOTE == 'remote'
-    ? import.meta.env.VITE_BACKEND_SERVER + '/api/'
+    ? import.meta.env.VITE_BACKEND_SERVER + 'api/'
     : 'http://localhost:8888/api/';
 export const BASE_URL =
   import.meta.env.PROD || import.meta.env.VITE_DEV_REMOTE
     ? import.meta.env.VITE_BACKEND_SERVER
     : 'http://localhost:8888/';
+
+// Debug logging for production builds
+console.log('Environment debug info:', {
+  isProd: import.meta.env.PROD,
+  devRemote: import.meta.env.VITE_DEV_REMOTE,
+  backendServer: import.meta.env.VITE_BACKEND_SERVER,
+  constructedApiUrl: API_BASE_URL,
+  constructedBaseUrl: BASE_URL
+});
 
 export const WEBSITE_URL = import.meta.env.PROD
   ? 'http://cloud.idurarapp.com/'
