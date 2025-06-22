@@ -17,8 +17,8 @@ const inventorySchema = new mongoose.Schema({
   batchNumber: { type: String, required: false },
 }, {
   timestamps: true,
-  collection: 'inventory' // ✅ lowercase 'inventory' to match your MongoDB collection name
+  collection: 'Inventory' // ✅ lowercase 'inventory' to match your MongoDB collection name
 });
 
 // ✅ Ensure model name is 'Inventory' and matches MongoDB collection 'inventory'
-module.exports = mongoose.models.Inventory || mongoose.model('inventory', inventorySchema);
+module.exports = mongoose.models.Inventory || mongoose.model('Inventory', inventorySchema);
