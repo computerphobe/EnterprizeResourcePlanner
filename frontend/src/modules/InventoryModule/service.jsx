@@ -23,7 +23,7 @@ const getHeaders = (isJson = true) => {
 // ✅ GET inventory list
 export const getinventory = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}${entity}/list`, {
+    const response = await fetch(`https://shashwatbackend.onrender.com/api/inventory/list`, {
       method: 'GET',
       headers: getHeaders(),
     });
