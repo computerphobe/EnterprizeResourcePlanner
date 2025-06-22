@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 import {
   Table,
   Tag,
@@ -56,13 +57,12 @@ const OrderList = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const { current } = useSelector(selectAuth);
-  const token = current?.token || '';
-  // Fetch orders with enhanced customer and inventory information
+  const token = current?.token || '';  // Fetch orders with enhanced customer and inventory information
   const fetchOrders = async () => {
     setLoading(true);
     try {
       console.log('🔍 Fetching complete order list with customer and inventory details...');
-      const res = await fetch('/api/order/list', {
+      const res = await fetch(`${API_BASE_URL}order/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -105,7 +105,7 @@ const OrderList = () => {
   // Fetch deliverers
   const fetchDeliverers = async () => {
     try {
-      const res = await fetch('/api/admin/list', {
+      const res = await fetch(`${API_BASE_URL}admin/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -123,10 +123,9 @@ const OrderList = () => {
 
     setOrderLoading(true);
     try {
-      // First try the substitutions endpoint (with detailed error handling)
-      console.log(`📡 Calling API: /api/order/${orderId}/substitutions`);
+      // First try the substitutions endpoint (with detailed error handling)      console.log(`📡 Calling API: ${API_BASE_URL}order/${orderId}/substitutions`);
       try {
-        const response = await fetch(`/api/order/${orderId}/substitutions`, {
+        const response = await fetch(`${API_BASE_URL}order/${orderId}/substitutions`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
@@ -173,9 +172,8 @@ const OrderList = () => {
         console.warn('⚠️ Failed to fetch from substitutions endpoint:', substitutionError.message);
       }
 
-      // Fallback to basic order fetch 
-      console.log(`📡 Calling fallback API: /api/order/${orderId}`);
-      const fallbackResponse = await fetch(`/api/order/${orderId}`, {
+      // Fallback to basic order fetch      console.log(`📡 Calling fallback API: ${API_BASE_URL}order/${orderId}`);
+      const fallbackResponse = await fetch(`${API_BASE_URL}order/${orderId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -206,7 +204,7 @@ const OrderList = () => {
   // Fetch available returned items for substitution
   const fetchAvailableReturns = async (inventoryItemId) => {
     try {
-      const response = await fetch(`/api/order/returns/available/${inventoryItemId}`, {
+      const response = await fetch(`${API_BASE_URL}order/returns/available/${inventoryItemId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -260,7 +258,7 @@ const OrderList = () => {
       
       console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
       
-      const response = await fetch(`/api/order/${selectedOrderId}/substitute`, {
+      const response = await fetch(`${API_BASE_URL}order/${selectedOrderId}/substitute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -292,7 +290,7 @@ const OrderList = () => {
   // Assign a deliverer to an order
   const assignDelivererToOrder = async (orderId, delivererId) => {
     try {
-      const res = await fetch(`/api/order/${orderId}/assignDelivery`, {
+      const res = await fetch(`${API_BASE_URL}order/${orderId}/assignDelivery`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
