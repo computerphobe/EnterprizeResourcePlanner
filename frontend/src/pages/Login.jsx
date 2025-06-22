@@ -14,10 +14,7 @@ const LoginPage = () => {
   const { isLoading } = auth;
   const dispatch = useDispatch();
 
-  console.log('LoginPage component loaded');
-
   const onFinish = (values) => {
-    console.log('Login form submitted with:', values);
     dispatch(login({ loginData: values }));
   };
   

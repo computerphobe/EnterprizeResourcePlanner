@@ -50,11 +50,11 @@ const ExpensesPage = lazy(() => import('@/pages/Expenses'));
 
 const FinancialReports = lazy(() => import('@/pages/FinancialReports'));
 
-const HospitalOrders = lazy(() => import('@/pages/Hospital/orders'));
-const HospitalDelivery = lazy(() => import('@/pages/Hospital/delivery'));
-const HospitalHistory = lazy(() => import('@/pages/Hospital/history'));
-const HospitalSalesBill = lazy(() => import('@/pages/Hospital/salesbill'));
-const HospitalReturns = lazy(() => import('@/pages/Hospital/returns'));
+const HospitalOrders = lazy(() => import('@/pages/hospital/Orders'));
+const HospitalDelivery = lazy(() => import('@/pages/hospital/Delivery'));
+const HospitalHistory = lazy(() => import('@/pages/hospital/History'));
+const HospitalSalesBill = lazy(() => import('@/pages/hospital/SalesBill'));
+const HospitalReturns = lazy(() => import('@/pages/hospital/returns'));
 
 const DoctorOrders = lazy(() => import('@/pages/Doctor/orders'));
 const DoctorDelivery = lazy(() => import('@/pages/Doctor/delivery'));

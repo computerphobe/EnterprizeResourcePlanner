@@ -6,7 +6,6 @@ import useLanguage from '@/locale/useLanguage';
 
 export default function LoginForm() {
   const translate = useLanguage();
-console.log('LoginForm component loaded'); // Debugging line
   return (
     <div>
       <Form.Item

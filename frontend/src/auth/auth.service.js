@@ -5,14 +5,12 @@ import successHandler from '@/request/successHandler';
 
 export const login = async ({ loginData }) => {
   try {
-    console.log('Making login request with:', loginData);
     const response = await axios.post(
       API_BASE_URL + `login?timestamp=${new Date().getTime()}`,
       loginData
     );
 
     const { status, data } = response;
-    console.log('Auth response:', data);
     
     // Notify success/failure
     successHandler(
@@ -38,15 +36,12 @@ export const login = async ({ loginData }) => {
       // This prevents race conditions and infinite loops
     }
     
-    return data;
-  } catch (error) {
-    console.error('Login error:', error);
+    return data;  } catch (error) {
     return errorHandler(error);
   }
 };
 
 export const register = async ({ registerData }) => {
-  console.log('auth.service.js registerData', registerData);
   try {
     const response = await axios.post(API_BASE_URL + `register`, registerData);
 

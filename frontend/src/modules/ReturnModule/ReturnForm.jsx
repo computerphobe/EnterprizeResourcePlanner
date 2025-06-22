@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { message } from 'antd';
-import { request } from '../../services/request';
+import { request } from '@/services/dashboardService';
 
 const ReturnForm = () => {
   const { current: currentUser } = useSelector((state) => state.auth);
