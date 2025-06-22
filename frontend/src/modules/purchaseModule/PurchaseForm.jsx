@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Space, message } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { createPurchase } from './service';
-import { getSuppliers } from '../SupplierModule/service';
+import { getSuppliers } from '@/modules/supplierModule/service';
 import dayjs from 'dayjs';
 
 export default function PurchaseForm({ open, onClose }) {
