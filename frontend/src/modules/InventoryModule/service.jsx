@@ -24,26 +24,40 @@ const getHeaders = (isJson = true) => {
 export const getinventory = async () => {
   try {
     const url = `${API_BASE_URL}${entity}/list`;
-    console.log('🔍 Fetching inventory from URL:', url);
-    console.log('🔍 API_BASE_URL:', API_BASE_URL);
-    console.log('🔍 Entity:', entity);
     
     const response = await fetch(url, {
       method: 'GET',
       headers: getHeaders(),
-    });    const result = await response.json();
-    console.log('🔍 API Response:', result);
+    });
+
+    const result = await response.json();
     
     if (result.success && Array.isArray(result.result)) {
-      console.log('✅ Successfully fetched', result.result.length, 'inventory items');
       return result.result.map(item => ({ ...item, key: item._id }));
     }
     
-    console.warn('⚠️ API returned success:false or invalid data:', result);
     return [];
   } catch (error) {
     console.error('Error fetching inventory:', error);
     return [];
+  }
+};
+
+// ✅ Alternative function name for listing inventory
+export const listInventory = async () => {
+  try {
+    const url = `${API_BASE_URL}${entity}/list`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+
+    const result = await response.json();
+    return result; // Return the full result object with success flag
+  } catch (error) {
+    console.error('Error listing inventory:', error);
+    return { success: false, result: [] };
   }
 };
 
@@ -62,7 +76,7 @@ export const getInventoryById = async (id) => {
 };
 
 // ✅ POST new inventory item
-export const createinventory = async (data) => {
+export const createInventory = async (data) => {
   try {
     const processedData = {
       ...data,
@@ -73,16 +87,16 @@ export const createinventory = async (data) => {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(processedData),
-    });
-
-    const result = await response.json();
-    console.log('Inventory created:', result);
+    });    const result = await response.json();
     return result.result;
   } catch (error) {
     console.error('Error creating inventory:', error);
     throw error;
   }
 };
+
+// Legacy function name for backward compatibility
+export const createinventory = createInventory;
 
 // ✅ PATCH update inventory item
 export const updateinventory = async (id, data) => {
@@ -94,10 +108,7 @@ export const updateinventory = async (id, data) => {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify(processedData),
-    });
-
-    const result = await response.json();
-    console.log('Inventory updated:', result);
+    });    const result = await response.json();
     return result.result;
   } catch (error) {
     console.error('Error updating inventory:', error);

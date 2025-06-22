@@ -21,4 +21,4 @@ const inventorySchema = new mongoose.Schema({
 });
 
 // ✅ Ensure model name is 'Inventory' and matches MongoDB collection 'inventory'
-module.exports = mongoose.models.Inventory || mongoose.model('Inventory', inventorySchema);
+module.exports = mongoose.models.Inventory || mongoose.model('inventory', inventorySchema);

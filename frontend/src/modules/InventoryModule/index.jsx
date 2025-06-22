@@ -14,41 +14,24 @@ export default function InventoryModule() {
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
-
   // Fetch Inventory List
   const fetchInventory = async () => {
     setLoading(true);
-    console.log("⏳ Starting inventory fetch...");
     
     try {
-      // Try both methods to fetch inventory
-      const directResult = await getinventory();
-      console.log('📊 Direct fetch result:', directResult);
+      const result = await listInventory();
       
-      const listResult = await listInventory();
-      console.log('📋 List fetch result:', listResult);
-      
-      // Use whichever has data
-      let finalData = [];
-      
-      if (Array.isArray(directResult) && directResult.length > 0) {
-        console.log('✅ Using direct fetch data with', directResult.length, 'items');
-        finalData = directResult;
-      } else if (listResult?.success && Array.isArray(listResult.result) && listResult.result.length > 0) {
-        console.log('✅ Using list fetch data with', listResult.result.length, 'items');
-        finalData = listResult.result;
+      if (result?.success && Array.isArray(result.result)) {
+        setInventoryData(result.result);
+        if (result.result.length === 0) {
+          message.info('No inventory items found. Try adding one!');
+        }
       } else {
-        console.log('⚠️ No inventory data found');
-      }
-      
-      console.log('Final data for table:', finalData);
-      setInventoryData(finalData);
-      
-      if (finalData.length === 0) {
+        setInventoryData([]);
         message.info('No inventory items found. Try adding one!');
       }
     } catch (error) {
-      console.error('❌ Failed to fetch inventory:', error);
+      console.error('Failed to fetch inventory:', error);
       message.error('Failed to fetch inventory data');
       setInventoryData([]);
     }
