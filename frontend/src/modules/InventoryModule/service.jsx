@@ -42,7 +42,7 @@ export const getinventory = async () => {
 // ✅ GET inventory item by ID
 export const getInventoryById = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}${entity}/${id}`, {
+    const response = await fetch(`${API_BASE_URL}${entity}/read/${id}`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -82,9 +82,7 @@ export const updateinventory = async (id, data) => {
     const processedData = {
       ...data,
       gstRate: data.gstRate ? Number(data.gstRate) : undefined
-    };
-
-    const response = await fetch(`${API_BASE_URL}${entity}/${id}`, {
+    };    const response = await fetch(`${API_BASE_URL}${entity}/update/${id}`, {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify(processedData),
@@ -101,8 +99,7 @@ export const updateinventory = async (id, data) => {
 
 // ✅ DELETE inventory item
 export const deleteinventory = async (id) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}${entity}/${id}`, {
+  try {    const response = await fetch(`${API_BASE_URL}${entity}/delete/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
     });
