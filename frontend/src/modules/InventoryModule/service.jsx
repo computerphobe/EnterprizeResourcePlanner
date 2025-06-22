@@ -23,15 +23,23 @@ const getHeaders = (isJson = true) => {
 // ✅ GET inventory list
 export const getinventory = async () => {
   try {
-    const response = await fetch(`https://shashwatbackend.onrender.com/api/inventory/list`, {
+    const url = `${API_BASE_URL}${entity}/list`;
+    console.log('🔍 Fetching inventory from URL:', url);
+    console.log('🔍 API_BASE_URL:', API_BASE_URL);
+    console.log('🔍 Entity:', entity);
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: getHeaders(),
-    });
-
-    const result = await response.json();
+    });    const result = await response.json();
+    console.log('🔍 API Response:', result);
+    
     if (result.success && Array.isArray(result.result)) {
+      console.log('✅ Successfully fetched', result.result.length, 'inventory items');
       return result.result.map(item => ({ ...item, key: item._id }));
     }
+    
+    console.warn('⚠️ API returned success:false or invalid data:', result);
     return [];
   } catch (error) {
     console.error('Error fetching inventory:', error);
