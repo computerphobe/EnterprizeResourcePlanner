@@ -34,13 +34,12 @@ export default function LoginForm() {
           placeholder="admin123"
           size="large"
         />
-      </Form.Item>
-
-      {/* 🔽 Role Selector */}
+      </Form.Item>      {/* 🔽 Role Selector */}
       <Form.Item
         label="Role"
         name="role"
         rules={[{ required: true, message: 'Please select your role!' }]}
+        initialValue="owner"
       >        <Select placeholder="Select Role" size="large">
           <Select.Option value="owner">Admin</Select.Option>
           <Select.Option value="doctor">Doctor</Select.Option>
