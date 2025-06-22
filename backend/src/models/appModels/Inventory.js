@@ -17,7 +17,7 @@ const inventorySchema = new mongoose.Schema({
   batchNumber: { type: String, required: false },
 }, {
   timestamps: true,
-  collection: 'Inventory' // ✅ lowercase 'inventory' to match your MongoDB collection name
+  collection: 'inventory' // ✅ Point to lowercase collection where the actual data is (21 items)
 });
 
 // ✅ Ensure model name is 'Inventory' and matches MongoDB collection 'inventory'

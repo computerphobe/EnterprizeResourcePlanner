@@ -1,15 +1,11 @@
-const Inventory = require('@/models/appModels/Inventory'); // Use the updated Inventory model
-console.log('loaded inventory controller')
+const Inventory = require('@/models/appModels/Inventory');
+
 // ✅ List Inventory Items
 exports.list = async (req, res) => {
     try {
-        console.log('🟢 Inventory list endpoint hit by user:', req.user?.role);
-        console.log('🟢 Model Name:', Inventory.modelName);
-        console.log('🟢 Collection Name:', Inventory.collection.name);
-
         const items = await Inventory.find({}).lean();
-        console.log('🟢 Found items count:', items.length);
-        console.log('🟢 Sample item:', items[0]);        // Return the complete item data - all fields from Inventory
+
+        // Return the complete item data - all fields from Inventory
         const mappedItems = items.map(item => ({
             _id: item._id,
             itemName: item.itemName,
