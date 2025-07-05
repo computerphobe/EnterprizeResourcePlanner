@@ -3,6 +3,8 @@ import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, Input
 import { EyeOutlined, FilePdfOutlined, PlusOutlined, ReloadOutlined, WarningOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { getAvailableInventoryForOrders } from '@/services/inventoryService';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 
 const { Title, Text } = Typography;
 
@@ -34,7 +36,7 @@ const Orders = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/doctor/orders', {
+      const response = await fetch(`${API_BASE_URL}doctor/orders`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -49,23 +51,19 @@ const Orders = () => {
     } finally {
       setLoading(false);
     }
-  }; const fetchInventoryItems = async () => {
+  };
+
+  const fetchInventoryItems = async () => {
     setInventoryLoading(true);
     try {
-      const response = await fetch('/api/inventory/list', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });      const data = await response.json(); if (data.success && Array.isArray(data.result)) {
-        console.log('Inventory items loaded successfully, count:', data.result.length);
-        setInventoryItems(data.result);
-      } else {
-        console.warn('Inventory items not returned as expected:', data);
-        setInventoryItems([]);
-      }
+      console.log('🔍 [DoctorOrders] Loading available inventory items...');
+      const items = await getAvailableInventoryForOrders();
+      
+      console.log(`✅ [DoctorOrders] Loaded ${items.length} available inventory items`);
+      setInventoryItems(items);
     } catch (error) {
-      console.error('Error fetching inventory items:', error);
-      message.error('Failed to fetch inventory items');
+      console.error('❌ [DoctorOrders] Error fetching inventory items:', error);
+      message.error('Failed to fetch inventory items: ' + error.message);
       setInventoryItems([]);
     } finally {
       setInventoryLoading(false);
@@ -73,6 +71,8 @@ const Orders = () => {
   };
   const handlePlaceOrder = () => {
     setIsModalVisible(true);
+    // Refresh inventory data when opening the modal to ensure we have latest data
+    fetchInventoryItems();
     // Initialize form with one empty item
     setTimeout(() => {
       form.setFieldsValue({ items: [{}] });
@@ -179,39 +179,80 @@ const Orders = () => {
         return;
       }
 
-      // Validate each item
+      // Validate each item and find the corresponding inventory item
+      const validatedItems = [];
       for (let i = 0; i < values.items.length; i++) {
         const item = values.items[i];
+        
+        // Check if inventory item ID is selected
         if (!item.inventoryItem) {
           message.error(`Please select an inventory item for item ${i + 1}`);
           return;
         }
+        
+        // Find the full inventory item object
+        const inventoryItem = inventoryItems.find(invItem => 
+          invItem._id === item.inventoryItem || 
+          invItem.id === item.inventoryItem || 
+          invItem.inventoryId === item.inventoryItem
+        );
+        
+        if (!inventoryItem) {
+          console.error(`❌ [DoctorOrders] Inventory item not found in current list for item ${i + 1}`);
+          console.error(`❌ Looking for ID: "${item.inventoryItem}"`);
+          console.error(`❌ Available IDs:`, inventoryItems.map(inv => inv._id));
+          message.error(`Inventory item not found for item ${i + 1}. Please refresh and try again.`);
+          
+          // Refresh inventory data
+          await fetchInventoryItems();
+          return;
+        }
+        
         if (!item.quantity || item.quantity <= 0) {
           message.error(`Please enter a valid quantity for item ${i + 1}`);
           return;
         }
-      }
 
-      // Create order data with multiple items
-      const orderData = {
-        items: values.items.map(item => ({
-          inventoryItem: item.inventoryItem,
+        // Check stock availability
+        if (inventoryItem.quantity < item.quantity) {
+          message.warning(`Only ${inventoryItem.quantity} units available for ${inventoryItem.itemName || inventoryItem.name || 'this item'}`);
+        }
+
+        validatedItems.push({
+          inventoryItem: inventoryItem._id || inventoryItem.id,  // Backend expects 'inventoryItem'
+          itemName: inventoryItem.itemName || inventoryItem.name || inventoryItem.title || 'Unknown Item',
           quantity: item.quantity,
-          price: 0, // Default price, will be updated by backend
+          price: inventoryItem.price || 0,
+          unit: inventoryItem.unit || 'pieces',
+          category: inventoryItem.category || 'other',
           purchaseType: item.purchaseType || 'regular',
           notes: item.notes || ''
-        })),
-        totalAmount: 0, // Will be calculated on backend
+        });
+      }
+
+      // Create order data with validated items
+      const orderData = {
+        items: validatedItems,
+        totalAmount: validatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         status: 'pending',
         orderType: 'doctor',
-        doctorId: current?.id || '',
+        doctorId: current?.id || current?._id || '',
         doctorName: current?.name || 'Unknown Doctor',
         hospitalName: current?.hospitalName || 'Unknown Hospital',
-        createdBy: current?.id || '',
+        createdBy: current?.id || current?._id || '',
         notes: values.orderNotes || ''
       };
 
-      const response = await fetch('/api/doctor/orders/create', {
+      console.log('🔍 [DoctorOrders] Submitting order data:', JSON.stringify(orderData, null, 2));
+      console.log('🔍 [DoctorOrders] Items being sent:', orderData.items.map((item, i) => ({
+        index: i + 1,
+        inventoryItem: item.inventoryItem,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        purchaseType: item.purchaseType
+      })));
+
+      const response = await fetch(`${API_BASE_URL}doctor/orders/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,22 +260,27 @@ const Orders = () => {
         },
         body: JSON.stringify(orderData)
       });
+      
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create order');
+        throw new Error(data.message || `HTTP ${response.status}: Failed to create order`);
       }
 
       if (data.success) {
-        message.success(`Order placed successfully with ${values.items.length} item(s)`);
+        message.success(`Order placed successfully with ${validatedItems.length} item(s)`);
         setIsModalVisible(false);
         form.resetFields();
+        // Reset form with one empty item
+        setTimeout(() => {
+          form.setFieldsValue({ items: [{}] });
+        }, 100);
         fetchOrders();
       } else {
         throw new Error(data.message || 'Failed to place order');
       }
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error('❌ [DoctorOrders] Error creating order:', error);
       message.error(error.message || 'Failed to place order');
     }
   };
@@ -425,61 +471,18 @@ const Orders = () => {
                           placeholder="Select an item"
                           loading={inventoryLoading}
                           style={{ width: '100%' }}
-                          options={(inventoryItems || []).map(item => {
-                            const itemId = item._id || item.id || item.inventoryId || '';
-                            let itemName = 'Unknown Item';
-                            
-                            for (const key in item) {
-                              if (
-                                typeof item[key] === 'string' &&
-                                (key.toLowerCase().includes('name') ||
-                                  key.toLowerCase() === 'title' ||
-                                  key.toLowerCase() === 'label')
-                              ) {
-                                itemName = item[key];
-                                break;
-                              }
-                            }
-
-                            let itemSku = '';
-                            for (const key in item) {
-                              if (
-                                typeof item[key] === 'string' &&
-                                (key.toLowerCase().includes('sku') ||
-                                  key.toLowerCase().includes('code') ||
-                                  key.toLowerCase() === 'id')
-                              ) {
-                                itemSku = item[key];
-                                break;
-                              }
-                            }
-
-                            if (itemName === 'Unknown Item') {
-                              for (const key in item) {
-                                if (typeof item[key] === 'string' && item[key].length > 0) {
-                                  itemName = `${key}: ${item[key]}`;
-                                  break;
-                                }
-                              }
-                            }
-
-                            return {
-                              value: itemId,
-                              label: itemSku ? `${itemName} - ${itemSku}` : itemName
-                            };
-                          })}                          showSearch
+                          options={(inventoryItems || []).map(item => ({
+                            value: item._id,
+                            label: `${item.itemName} - ₹${item.price} (${item.quantity} available)`,
+                            item: item // Store full item for easy access
+                          }))}
+                          showSearch
                           filterOption={(input, option) => {
-                            const label = option?.label || option?.children || '';
-                            const searchString = typeof label === 'string' ? label : String(label || '');
-                            const inputString = typeof input === 'string' ? input : String(input || '');
-                            return searchString.toLowerCase().includes(inputString.toLowerCase());
+                            return option.label.toLowerCase().includes(input.toLowerCase());
                           }}
-                          onChange={(value) => {
-                            const selectedItem = inventoryItems.find(item =>
-                              item._id === value || item.id === value || item.inventoryId === value
-                            );
-                            if (selectedItem) {
-                              message.success(`Selected: ${selectedItem.name || selectedItem.title || selectedItem.productName || 'Item'}`);
+                          onChange={(value, option) => {
+                            if (option?.item) {
+                              console.log(`✅ [DoctorOrders] Selected inventory item: ${option.item.itemName}`);
                             }
                           }}
                         />

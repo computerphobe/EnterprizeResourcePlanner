@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Form, Input, InputNumber, message, Select } from 'antd';
 import { createReturn } from './service';
-import { getinventory } from '../InventoryModule/service';
+import { getInventoryList } from '@/services/inventoryService';
 
 export default function ReturnsForm({ open, onClose }) {
   const [form] = Form.useForm();
@@ -16,10 +16,13 @@ export default function ReturnsForm({ open, onClose }) {
 
   const loadInventoryItems = async () => {
     try {
-      const items = await getinventory();
+      console.log('🔍 [ReturnsForm] Loading inventory items...');
+      const items = await getInventoryList();
       setInventoryItems(items);
+      console.log(`✅ [ReturnsForm] Loaded ${items.length} inventory items`);
     } catch (err) {
-      message.error('Failed to load inventory items');
+      console.error('❌ [ReturnsForm] Error loading inventory:', err);
+      message.error('Failed to load inventory items: ' + err.message);
     }
   };
 

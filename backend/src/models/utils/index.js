@@ -24,12 +24,7 @@ const routesList = [
     controllerName: 'inventoryController',
     modelName: 'Inventory',
   },
-  // Keeping this entry for backward compatibility, but pointing to the same controller and model
-  {
-    entity: 'productinventory',
-    controllerName: 'inventoryController', // Point to the same controller
-    modelName: 'Inventory', // Point to the unified Inventory model
-  },
+  // Removed productinventory from dynamic routes - using explicit productRoutes instead
 
   {
     entity: 'returns',

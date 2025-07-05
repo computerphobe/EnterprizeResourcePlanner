@@ -3,6 +3,7 @@ import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, Input
 import { EyeOutlined, FilePdfOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { getAvailableInventoryForOrders } from '@/services/inventoryService';
 
 const { Title, Text } = Typography;
 
@@ -90,35 +91,18 @@ const Orders = () => {
     fetchOrders();
     fetchInventoryItems();
   }, [token]);
+
   const fetchInventoryItems = async () => {
     try {
-      console.log('🟢 Fetching inventory items...');
-      const response = await fetch('/api/inventory/list', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('🟢 Response status:', response.status);
-      console.log('🟢 Response from inventory API:', response);
+      console.log('� [HospitalOrders] Loading available inventory items...');
+      const items = await getAvailableInventoryForOrders();
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch inventory items: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('🟢 Inventory data received:', data);
-      
-      if (data.success) {
-        console.log('🟢 Setting inventory items:', data.result.length, 'items');
-        setInventoryItems(data.result || []);
-      } else {
-        console.log('🟠 API returned success=false:', data.message);
-        message.error(data.message || 'Failed to fetch inventory items');
-      }
+      console.log(`✅ [HospitalOrders] Loaded ${items.length} available inventory items`);
+      setInventoryItems(items);
     } catch (error) {
-      console.error('🔴 Error fetching inventory:', error);
-      message.error('Failed to fetch inventory items');
+      console.error('❌ [HospitalOrders] Error fetching inventory items:', error);
+      message.error('Failed to fetch inventory items: ' + error.message);
+      setInventoryItems([]);
     }
   };
 

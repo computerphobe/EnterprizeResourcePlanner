@@ -1155,7 +1155,7 @@ const createDoctorOrder = async (req, res) => {
     const { items, totalAmount, notes, orderNotes } = req.body;
     const doctorId = req.user.id;
 
-    console.log('Doctor order request:', { items, totalAmount, doctorId });
+    console.log('🔍 Doctor order request:', JSON.stringify({ items, totalAmount, doctorId }, null, 2));
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ 
@@ -1170,7 +1170,15 @@ const createDoctorOrder = async (req, res) => {
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      console.log(`🔍 Processing item ${i + 1}:`, {
+        inventoryItem: item.inventoryItem,
+        quantity: item.quantity,
+        purchaseType: item.purchaseType,
+        isValidObjectId: mongoose.Types.ObjectId.isValid(item.inventoryItem)
+      });
+      
       if (!mongoose.Types.ObjectId.isValid(item.inventoryItem)) {
+        console.log(`❌ Invalid ObjectId for item ${i + 1}: "${item.inventoryItem}"`);
         return res.status(400).json({ 
           success: false, 
           message: `Invalid inventory item ID for item ${i + 1}` 
@@ -1192,8 +1200,21 @@ const createDoctorOrder = async (req, res) => {
       }
 
       // Fetch the inventory item to get the actual price
+      console.log(`🔍 Looking up inventory item: ${item.inventoryItem}`);
       const inventoryItem = await Inventory.findById(item.inventoryItem);
+      console.log(`🔍 Inventory lookup result:`, inventoryItem ? {
+        _id: inventoryItem._id,
+        itemName: inventoryItem.itemName,
+        price: inventoryItem.price,
+        quantity: inventoryItem.quantity
+      } : 'NOT FOUND');
+      
       if (!inventoryItem) {
+        // Let's also try to find any inventory item to see if the database has data
+        const anyItem = await Inventory.findOne().select('_id itemName');
+        console.log(`🔍 Sample inventory item in database:`, anyItem);
+        console.log(`🔍 Total inventory items in database:`, await Inventory.countDocuments());
+        
         return res.status(400).json({
           success: false,
           message: `Inventory item not found for item ${i + 1}`
