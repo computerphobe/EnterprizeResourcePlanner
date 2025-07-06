@@ -4,7 +4,7 @@ const router = express.Router();
 
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
-
+// console.log('routesList:', routesList);
 const deliveryController = require('@/controllers/appControllers/deliveryController');
 const orderController = require('@/controllers/appControllers/orderController');
 const ledgerController = require('@/controllers/appControllers/ledgerController');
@@ -479,4 +479,5 @@ router.get(
   catchErrors(orderController.generateOrderPdf)
 );
 
+// console.log('routesList:', routesList);
 module.exports = router;

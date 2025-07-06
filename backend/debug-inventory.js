@@ -1,4 +1,5 @@
 // Quick debug script to check current inventory items in database
+require('dotenv').config();
 const mongoose = require('mongoose');
 const path = require('path');
 

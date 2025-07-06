@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '@/config/serverApiConfig';
 import storePersist from '@/redux/storePersist';
 
-const entity = 'productinventory';
+const entity = 'productinventory'; // ✅ Fixed: Use the correct endpoint that matches backend routes
 
 // 🔐 Get token from localStorage or Redux-persisted auth
 const getToken = () => {

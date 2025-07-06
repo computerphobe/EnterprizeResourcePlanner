@@ -990,7 +990,7 @@ const hospitalOrders = async (req, res) => {
       })
       .populate({
         path: 'items.inventoryItem',
-        select: 'itemName category price productCode nameAlias material gstRate'
+        select: 'itemName category price description expiryDate batchNumber manufacturer unit minimumStock maximumStock'
       });
 
     console.log('Hospital orders:', orders.length);
@@ -1020,6 +1020,19 @@ const createHospitalOrder = async (req, res) => {
         return res.status(400).json({ 
           success: false, 
           message: 'Invalid inventory item ID' 
+        });
+      }
+      
+      // Verify the inventory item exists and is active
+      const inventoryItem = await Inventory.findOne({
+        _id: item.inventoryItem,
+        isActive: { $ne: false }
+      });
+      
+      if (!inventoryItem) {
+        return res.status(400).json({
+          success: false,
+          message: `Inventory item not found or inactive: ${item.inventoryItem}`
         });
       }
       
@@ -1121,7 +1134,7 @@ const doctorOrders = async (req, res) => {
       })
       .populate({
         path: 'items.inventoryItem',
-        select: 'name itemName productName sku code description price'
+        select: 'itemName category price description expiryDate batchNumber manufacturer unit minimumStock maximumStock'
       });
 
     console.log('Doctor orders found:', orders.length);
@@ -1201,7 +1214,14 @@ const createDoctorOrder = async (req, res) => {
 
       // Fetch the inventory item to get the actual price
       console.log(`🔍 Looking up inventory item: ${item.inventoryItem}`);
-      const inventoryItem = await Inventory.findById(item.inventoryItem);
+      
+      // For doctors/hospitals, find inventory item without strict organization filtering
+      // since they should be able to order from the available inventory
+      const inventoryItem = await Inventory.findOne({
+        _id: item.inventoryItem,
+        isActive: { $ne: false } // Only check if item is active
+      });
+      
       console.log(`🔍 Inventory lookup result:`, inventoryItem ? {
         _id: inventoryItem._id,
         itemName: inventoryItem.itemName,
@@ -1212,8 +1232,8 @@ const createDoctorOrder = async (req, res) => {
       if (!inventoryItem) {
         // Let's also try to find any inventory item to see if the database has data
         const anyItem = await Inventory.findOne().select('_id itemName');
-        console.log(`🔍 Sample inventory item in database:`, anyItem);
-        console.log(`🔍 Total inventory items in database:`, await Inventory.countDocuments());
+        console.log(`🔍 Sample Inventory item in database:`, anyItem);
+        console.log(`🔍 Total Inventory items in database:`, await Inventory.countDocuments());
         
         return res.status(400).json({
           success: false,

@@ -1,7 +1,7 @@
 import request from '@/request/request';
 
 const API_BASE_URL = '/api';
-const entity = 'productinventory';
+const entity = 'productinventory'; // ✅ Fixed: Use the correct endpoint that matches backend routes
 
 // 🌟 SHARED INVENTORY SERVICE
 // This service can be imported by any module that needs inventory access

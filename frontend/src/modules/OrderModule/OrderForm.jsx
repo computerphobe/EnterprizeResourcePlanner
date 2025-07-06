@@ -127,13 +127,14 @@ const OrderForm = () => {
         doctorName: currentUser.name,
         hospitalName: currentUser.hospitalName,
         items: selectedItems.map(item => ({
-          inventoryItemId: item.inventoryItemId,
+          inventoryItem: item.inventoryItemId,  // Backend expects 'inventoryItem'
           itemName: item.itemName,
           quantity: item.orderedQuantity,
           price: item.itemPrice,
           totalPrice: item.totalPrice,
           unit: item.unit,
-          category: item.category
+          category: item.category,
+          purchaseType: 'regular'  // Add required purchaseType
         })),
         totalAmount: calculateTotalAmount(),
         status: 'pending',
