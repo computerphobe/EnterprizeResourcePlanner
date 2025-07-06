@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 import { 
   Table, 
   Button, 
@@ -68,7 +69,7 @@ const DeliveryConfirmation = () => {
 
   useEffect(() => {
     if (!token) return setLoading(false);    // Fetch all completed orders for return collection (not just from current deliverer)
-    fetch('/api/order/completed-for-returns', {
+    fetch(`${API_BASE_URL}order/completed-for-returns`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
@@ -244,7 +245,7 @@ const DeliveryConfirmation = () => {
       };
 
       console.log('=== FRONTEND: Sending return data ===');
-      console.log('Return data:', JSON.stringify(returnData, null, 2));      const response = await fetch('/api/returns/collect', {
+      console.log('Return data:', JSON.stringify(returnData, null, 2));      const response = await fetch(`${API_BASE_URL}returns/collect`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

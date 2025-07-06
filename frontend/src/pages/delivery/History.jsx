@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 import { 
   Table, 
   Typography, 
@@ -36,7 +37,7 @@ const History = () => {
     if (!token) {
       setLoading(false);
       return;
-    }    fetch('/api/order/delivered-history', {
+    }    fetch(`${API_BASE_URL}order/delivered-history`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())
