@@ -3,6 +3,7 @@ import { Button, Tag, Form, Divider, Input, DatePicker, Select, InputNumber } fr
 import { PageHeader } from '@ant-design/pro-layout';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 
 import {
   ArrowLeftOutlined,
@@ -53,7 +54,7 @@ export default function CreateItem({ config, CreateForm }) {
     if (!current?.token) return;
     (async () => {
       try {
-        const response = await fetch('/api/client/list', {
+        const response = await fetch(`${API_BASE_URL}client/list`, {
           headers: { Authorization: `Bearer ${current.token}` }
         });
         const data = await response.json();
