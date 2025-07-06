@@ -89,6 +89,17 @@ router.get(
 );
 
 // --- Deliverer Dashboard Routes ---
+// Add logging middleware for debugging
+router.use('/order/current', (req, res, next) => {
+  console.log('🚀 API /order/current called:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    user: req.user?.id || 'No user'
+  });
+  next();
+});
+
 router.get(
   '/order/current',
   authenticateToken,
