@@ -205,6 +205,14 @@ router.route('/order/:orderId/substitutions')
     catchErrors(orderController.getOrderWithSubstitutions)
   );
 
+// NEW: Get order details for doctor (includes photo verification)
+router.route('/doctor/orders/:orderId')
+  .get(
+    authenticateToken, 
+    roleMiddleware(['doctor']), 
+    catchErrors(orderController.getDoctorOrderDetails)
+  );
+
 // Get basic order by ID (fallback endpoint)
 router.route('/order/:orderId')
   .get(
@@ -385,18 +393,23 @@ router.route('/hospital/orders/create')
 
 // New endpoint for hospital to get order details
 router.route('/hospital/orders/:orderId')
-  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.getOrderById));
+  .get(authenticateToken, roleMiddleware(['hospital']), catchErrors(orderController.getHospitalOrderDetails));
 
-// Hospital and Doctor Sales Bills (Invoices)
+// Hospital and Doctor Sales Bills (Invoices) - Simplified approach
 router.route('/hospital/sales-bills')
   .get(
     authenticateToken, 
     roleMiddleware(['hospital']),
     (req, res, next) => {
-      console.log('🏥 Hospital sales-bills route hit, user:', req.user?.id);
+      console.log('🏥 Hospital sales-bills route hit:', {
+        userId: req.user?.id,
+        email: req.user?.email,
+        role: req.user?.role,
+        hospitalName: req.user?.hospitalName || req.user?.name
+      });
       next();
     },
-    catchErrors(appControllers.invoiceController.getClientInvoices)
+    catchErrors(appControllers.invoiceController.getUserInvoices)
   );
 
 router.route('/doctor/sales-bills')
@@ -404,10 +417,16 @@ router.route('/doctor/sales-bills')
     authenticateToken, 
     roleMiddleware(['doctor']),
     (req, res, next) => {
-      console.log('🧠 Doctor sales-bills route hit, user:', req.user?.id);
+      console.log('🧠 Doctor sales-bills route hit:', {
+        userId: req.user?.id,
+        email: req.user?.email,
+        role: req.user?.role,
+        hospitalName: req.user?.hospitalName,
+        doctorName: req.user?.name
+      });
       next();
     },
-    catchErrors(appControllers.invoiceController.getClientInvoices)
+    catchErrors(appControllers.invoiceController.getUserInvoices)
   );
 
 // Direct endpoint for admins to look up invoices by client ID

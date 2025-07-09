@@ -166,30 +166,10 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/doctor/orders'}>{translate('orders')}</Link>,
         },
         {
-          key: 'delivery',
-          icon: <CarOutlined />,
-          label: <Link to={'/doctor/delivery'}>{translate('delivery')}</Link>,
-        },
-        {
-          key: 'history',
-          icon: <HistoryOutlined />,
-          label: <Link to={'/doctor/history'}>{translate('history')}</Link>,
-        },
-        {
           key: 'salesbill',
           icon: <FileTextOutlined />,
           label: <Link to={'/doctor/salesbill'}>{translate('sales_bill')}</Link>,
         },
-        {
-          key: 'returns',
-          icon: <RollbackOutlined />,
-          label: <Link to={'/doctor/returns'}>{translate('returns')}</Link>,
-        },
-        {
-          key: 'inventory',
-          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
-          icon: <TagsOutlined />,
-        }
       ],
       hospital: [
         {
@@ -241,15 +221,6 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'delivery-current',
           icon: <ContainerOutlined />,
           label: <Link to={'/current-orders'}>{translate('current_orders')}</Link>,
-        },
-        {
-          key: 'delivery-pickup',
-          icon: <FileSyncOutlined />,
-          label: <Link to={'/pickup'}>{translate('pickup_confirmation')}</Link>,
-        },        {
-          key: 'delivery-confirmation',
-          icon: <ReconciliationOutlined />,
-          label: <Link to={'/confirmation'}>{translate('collect_returns')}</Link>,
         },
         {
           key: 'delivery-history',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, InputNumber, message, Input, Row, Col, Divider, Card, Descriptions, List } from 'antd';
-import { EyeOutlined, FilePdfOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, InputNumber, message, Input, Row, Col, Divider, Card, Descriptions, List, Image, Spin } from 'antd';
+import { EyeOutlined, FilePdfOutlined, PlusOutlined, DeleteOutlined, CheckCircleOutlined, CameraOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
 import { getAvailableInventoryForOrders } from '@/services/inventoryService';
@@ -134,7 +134,7 @@ const Orders = () => {
     }
   };  const handleViewOrder = async (order) => {
     try {
-      // Fetch the detailed order to ensure we have all inventory details
+      // Fetch the detailed order with photo verification data
       const response = await fetch(`/api/hospital/orders/${order._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -154,6 +154,7 @@ const Orders = () => {
         throw new Error(data.message || 'Failed to fetch order details');
       }
     } catch (error) {
+      console.error('Error fetching order details:', error);
       message.error(error.message || 'Failed to fetch order details');
       // Fall back to using the basic order data if detailed fetch fails
       setSelectedOrder(order);
@@ -310,6 +311,34 @@ const Orders = () => {
         else if (status === 'processing') color = 'blue';
         else if (status === 'cancelled') color = 'red';
         return <Tag color={color}>{status.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Photo Verification',
+      key: 'photoVerification',
+      render: (_, record) => {
+        const hasPickupPhoto = record.pickupVerification?.photo;
+        const hasDeliveryPhoto = record.deliveryVerification?.photo;
+        
+        if (hasPickupPhoto || hasDeliveryPhoto) {
+          return (
+            <Space>
+              <CameraOutlined style={{ color: '#52c41a' }} />
+              <span style={{ color: '#52c41a', fontSize: '12px' }}>Verified</span>
+            </Space>
+          );
+        } else if (record.status === 'completed' || record.status === 'delivered') {
+          return (
+            <Space>
+              <ClockCircleOutlined style={{ color: '#faad14' }} />
+              <span style={{ color: '#faad14', fontSize: '12px' }}>Pending</span>
+            </Space>
+          );
+        } else {
+          return (
+            <span style={{ color: '#d9d9d9', fontSize: '12px' }}>N/A</span>
+          );
+        }
       },
     },
     {
@@ -695,8 +724,117 @@ const Orders = () => {
 
             {/* Additional Information */}
             {selectedOrder.notes && (
-              <Card title="Order Notes" size="small">
+              <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
                 <Text>{selectedOrder.notes}</Text>
+              </Card>
+            )}
+
+            {/* Photo Verification Section */}
+            {(selectedOrder.pickupVerification?.photo || selectedOrder.deliveryVerification?.photo) && (
+              <Card title="Photo Verification" size="small" style={{ marginBottom: 16 }}>
+                <Row gutter={[16, 16]}>
+                  {/* Pickup Photo */}
+                  {selectedOrder.pickupVerification?.photo && (
+                    <Col span={12}>
+                      <Card 
+                        title={
+                          <Space>
+                            <CameraOutlined style={{ color: '#52c41a' }} />
+                            <span>Pickup Confirmation</span>
+                          </Space>
+                        } 
+                        size="small"
+                        style={{ height: '100%' }}
+                      >
+                        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                          <Image
+                            src={selectedOrder.pickupVerification.photo}
+                            alt="Pickup Photo"
+                            style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'cover' }}
+                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                          />
+                        </div>
+                        
+                        <Descriptions column={1} size="small">
+                          {selectedOrder.pickupVerification.timestamp && (
+                            <Descriptions.Item label="Pickup Time">
+                              {new Date(selectedOrder.pickupVerification.timestamp).toLocaleString()}
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.pickupVerification.delivererName && (
+                            <Descriptions.Item label="Collected By">
+                              {selectedOrder.pickupVerification.delivererName}
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.pickupVerification.notes && (
+                            <Descriptions.Item label="Notes">
+                              {selectedOrder.pickupVerification.notes}
+                            </Descriptions.Item>
+                          )}
+                        </Descriptions>
+                      </Card>
+                    </Col>
+                  )}
+
+                  {/* Delivery Photo */}
+                  {selectedOrder.deliveryVerification?.photo && (
+                    <Col span={12}>
+                      <Card 
+                        title={
+                          <Space>
+                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                            <span>Delivery Confirmation</span>
+                          </Space>
+                        } 
+                        size="small"
+                        style={{ height: '100%' }}
+                      >
+                        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                          <Image
+                            src={selectedOrder.deliveryVerification.photo}
+                            alt="Delivery Photo"
+                            style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'cover' }}
+                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                          />
+                        </div>
+                        
+                        <Descriptions column={1} size="small">
+                          {selectedOrder.deliveryVerification.timestamp && (
+                            <Descriptions.Item label="Delivery Time">
+                              {new Date(selectedOrder.deliveryVerification.timestamp).toLocaleString()}
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.deliveryVerification.delivererName && (
+                            <Descriptions.Item label="Delivered By">
+                              {selectedOrder.deliveryVerification.delivererName}
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.deliveryVerification.customerSignature && (
+                            <Descriptions.Item label="Customer Signature">
+                              <div style={{ textAlign: 'center', marginTop: 8 }}>
+                                <Image
+                                  src={selectedOrder.deliveryVerification.customerSignature}
+                                  alt="Customer Signature"
+                                  style={{ maxWidth: '150px', maxHeight: '80px', border: '1px solid #d9d9d9' }}
+                                />
+                              </div>
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.deliveryVerification.customerName && (
+                            <Descriptions.Item label="Received By">
+                              {selectedOrder.deliveryVerification.customerName}
+                            </Descriptions.Item>
+                          )}
+                          {selectedOrder.deliveryVerification.notes && (
+                            <Descriptions.Item label="Delivery Notes">
+                              {selectedOrder.deliveryVerification.notes}
+                            </Descriptions.Item>
+                          )}
+                        </Descriptions>
+                      </Card>
+                    </Col>
+                  )}
+                </Row>
               </Card>
             )}
           </div>

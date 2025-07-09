@@ -658,14 +658,24 @@ const substituteOrderItem = async (req, res) => {
     try {
       // Update the return item quantity
       if (returnItem.returnedQuantity === quantityToSubstitute) {
-        // Mark entire return as used
+        // Mark entire return as used (don't set returnedQuantity to 0 due to min validation)
         returnItem.status = 'Used';
         returnItem.usedDate = new Date();
-        returnItem.returnedQuantity = 0;
+        // Keep the original returnedQuantity but mark as used
       } else {
         // Reduce the returned quantity
         returnItem.returnedQuantity -= quantityToSubstitute;
       }
+
+      // Track usage in the usedInOrders array
+      if (!returnItem.usedInOrders) {
+        returnItem.usedInOrders = [];
+      }
+      returnItem.usedInOrders.push({
+        orderId: orderId,
+        quantityUsed: quantityToSubstitute,
+        usedAt: new Date()
+      });
 
       await returnItem.save({ session });
 
@@ -1465,8 +1475,139 @@ const generateOrderPdf = async (req, res) => {
   }
 };
 
-module.exports = {  assignDeliverer,
-  delivererOrders,  ownerOrders,
+// NEW: Get order details for doctor (with photo verification access)
+const getDoctorOrderDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const doctorId = req.user.id;
+
+    console.log('Doctor requesting order details:', { orderId, doctorId });
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid order ID format' 
+      });
+    }
+
+    // Find the order with full details including photo verification
+    const order = await Order.findById(orderId)
+      .populate('doctorId', 'name role email hospitalName')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber manufacturer'
+      });
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order not found' 
+      });
+    }
+
+    // Authorization check - ensure doctor can only view their own orders
+    if (order.doctorId._id.toString() !== doctorId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. You can only view your own orders.' 
+      });
+    }
+
+    console.log('Doctor order details found:', {
+      orderNumber: order.orderNumber,
+      hasPickupPhoto: !!order.pickupVerification?.photo,
+      hasDeliveryPhoto: !!order.deliveryVerification?.photo,
+      status: order.status
+    });
+
+    return res.json({ 
+      success: true, 
+      result: order 
+    });
+
+  } catch (error) {
+    console.error('Error fetching doctor order details:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Internal server error' 
+    });
+  }
+};
+
+// NEW: Hospital order details with photo verification access
+const getHospitalOrderDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const hospitalId = req.user.id;
+
+    console.log('Hospital requesting order details:', { orderId, hospitalId });
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid order ID format' 
+      });
+    }
+
+    // Find the order with full details including photo verification
+    const order = await Order.findById(orderId)
+      .populate('doctorId', 'name role email hospitalName')
+      .populate('delivererId', 'name role email')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'itemName category price expiryDate batchNumber manufacturer'
+      });
+
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order not found' 
+      });
+    }
+
+    // Authorization check - ensure hospital can only view orders from their organization
+    // Check if it's a hospital's own order or an order from a doctor in their hospital
+    const isHospitalOrder = order.orderType === 'hospital' && order.createdBy?.toString() === hospitalId;
+    const isDoctorOrderFromHospital = order.orderType === 'doctor' && 
+      (order.hospitalId?.toString() === hospitalId || 
+       order.doctorId?.hospitalName === req.user.hospitalName ||
+       order.doctorId?.hospitalName === req.user.name);
+    
+    if (!isHospitalOrder && !isDoctorOrderFromHospital) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. You can only view orders from your hospital.' 
+      });
+    }
+
+    console.log('Hospital order details found:', {
+      orderNumber: order.orderNumber,
+      hasPickupPhoto: !!order.pickupVerification?.photo,
+      hasDeliveryPhoto: !!order.deliveryVerification?.photo,
+      status: order.status
+    });
+
+    return res.json({ 
+      success: true, 
+      result: order 
+    });
+
+  } catch (error) {
+    console.error('Error fetching hospital order details:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Internal server error' 
+    });
+  }
+};
+
+module.exports = {
+  assignDeliverer,
+  delivererOrders,
+  ownerOrders,
   getPendingInvoices,
   read,
   getOrderWithSubstitutions,
@@ -1483,6 +1624,8 @@ module.exports = {  assignDeliverer,
   doctorOrders,
   createDoctorOrder,
   getOrderById, // Expose the new fallback endpoint
+  getDoctorOrderDetails, // NEW: Doctor order details with photo access
+  getHospitalOrderDetails, // NEW: Hospital order details with photo verification access
   getAllCompletedOrdersForReturns, // NEW: Endpoint to get all completed orders for return collection
   generateOrderPdf // NEW: PDF generation endpoint
 };
