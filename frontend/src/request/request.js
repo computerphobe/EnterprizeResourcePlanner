@@ -247,7 +247,7 @@ const request = {
   getDashboard: async () => {
     try {
       includeToken();
-      const response = await axios.get('/dashboard');
+      const response = await axios.get('dashboard');
       successHandler(response, {
         notifyOnSuccess: false,
         notifyOnFailed: true,
@@ -261,7 +261,7 @@ const request = {
   getDashboardStats: async () => {
     try {
       includeToken();
-      const response = await axios.get('/dashboard/stats');
+      const response = await axios.get('dashboard/stats');
       return response.data;
     } catch (error) {
       return errorHandler(error);
@@ -271,7 +271,7 @@ const request = {
   getRecentActivities: async () => {
     try {
       includeToken();
-      const response = await axios.get('/dashboard/recent-activities');
+      const response = await axios.get('dashboard/recent-activities');
       return response.data;
     } catch (error) {
       return errorHandler(error);
@@ -281,7 +281,7 @@ const request = {
   getFinancialData: async () => {
     try {
       includeToken();
-      const response = await axios.get('/dashboard/financial-data');
+      const response = await axios.get('dashboard/financial-data');
       successHandler(response, {
         notifyOnSuccess: false,
         notifyOnFailed: true,
@@ -299,7 +299,7 @@ const request = {
       console.log('Getting ledger entries with params:', params);
       
       try {
-        const response = await axios.get('/dashboard/ledger', { params });
+        const response = await axios.get('dashboard/ledger', { params });
         console.log('getLedgerEntries success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: false,
@@ -310,7 +310,7 @@ const request = {
         // Fallback to alternative path
         console.log('Trying alternative path for getLedgerEntries');
         console.error('Primary path error:', error.message);
-        const response = await axios.get('/ledger', { params });
+        const response = await axios.get('ledger', { params });
         console.log('getLedgerEntries fallback success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: false,
@@ -330,7 +330,7 @@ const request = {
       console.log('Creating ledger entry with data:', data);
       
       try {
-        const response = await axios.post('/dashboard/ledger', data);
+        const response = await axios.post('dashboard/ledger', data);
         console.log('createLedgerEntry success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
@@ -341,7 +341,7 @@ const request = {
         // Fallback to alternative path
         console.log('Trying alternative path for createLedgerEntry');
         console.error('Primary path error:', error.message);
-        const response = await axios.post('/ledger', data);
+        const response = await axios.post('ledger', data);
         console.log('createLedgerEntry fallback success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
@@ -370,7 +370,7 @@ const request = {
       }
       
       try {
-        const response = await axios.put(`/dashboard/ledger/${id}`, data);
+        const response = await axios.put(`dashboard/ledger/${id}`, data);
         console.log('updateLedgerEntry success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
@@ -383,7 +383,7 @@ const request = {
         console.error('Primary path error:', error.message);
         
         try {
-          const response = await axios.put(`/ledger/${id}`, data);
+          const response = await axios.put(`ledger/${id}`, data);
           console.log('updateLedgerEntry fallback success response:', response.data);
           successHandler(response, {
             notifyOnSuccess: true,
@@ -393,9 +393,9 @@ const request = {
         } catch (fallbackError) {
           console.error('Fallback path failed:', fallbackError.message);
           
-          // As a last resort, try with /api prefix
-          console.log('Trying last resort path with /api prefix');
-          const response = await axios.put(`/api/ledger/${id}`, data);
+          // As a last resort, try with api prefix
+          console.log('Trying last resort path with api prefix');
+          const response = await axios.put(`api/ledger/${id}`, data);
           console.log('updateLedgerEntry last resort response:', response.data);
           successHandler(response, {
             notifyOnSuccess: true,
@@ -425,7 +425,7 @@ const request = {
       }
       
       try {
-        const response = await axios.delete(`/dashboard/ledger/${id}`);
+        const response = await axios.delete(`dashboard/ledger/${id}`);
         console.log('deleteLedgerEntry success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
@@ -438,7 +438,7 @@ const request = {
         console.error('Primary path error:', error.message);
         
         try {
-          const response = await axios.delete(`/ledger/${id}`);
+          const response = await axios.delete(`ledger/${id}`);
           console.log('deleteLedgerEntry fallback success response:', response.data);
           successHandler(response, {
             notifyOnSuccess: true,
@@ -448,9 +448,9 @@ const request = {
         } catch (fallbackError) {
           console.error('Fallback path failed:', fallbackError.message);
           
-          // As a last resort, try with /api prefix
-          console.log('Trying last resort path with /api prefix');
-          const response = await axios.delete(`/api/ledger/${id}`);
+          // As a last resort, try with api prefix
+          console.log('Trying last resort path with api prefix');
+          const response = await axios.delete(`api/ledger/${id}`);
           console.log('deleteLedgerEntry last resort response:', response.data);
           successHandler(response, {
             notifyOnSuccess: true,
@@ -584,7 +584,7 @@ const request = {
       console.log('Testing ledger entry creation with data:', data);
       
       try {
-        const response = await axios.post('/test/ledger', data);
+        const response = await axios.post('test/ledger', data);
         console.log('testCreateLedgerEntry success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
@@ -631,7 +631,7 @@ const request = {
       }
       
       try {
-        const response = await axios.put(`/test/ledger/${id}`, data);
+        const response = await axios.put(`test/ledger/${id}`, data);
         console.log('testUpdateLedgerEntry success response:', response.data);
         successHandler(response, {
           notifyOnSuccess: true,
