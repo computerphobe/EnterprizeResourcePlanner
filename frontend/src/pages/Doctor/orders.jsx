@@ -16,6 +16,7 @@ const Orders = () => {
   const [inventoryLoading, setInventoryLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetailsVisible, setOrderDetailsVisible] = useState(false);
+  const [orderDetailsLoading, setOrderDetailsLoading] = useState(false);
   const [form] = Form.useForm();
   const { current } = useSelector(selectAuth);
   const token = current?.token || '';
@@ -703,7 +704,7 @@ const Orders = () => {
         title={
           <div>
             <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-            <span>Order Details</span>
+            <span>Order Details - {selectedOrder?.orderNumber || 'Loading...'}</span>
           </div>
         }
         open={orderDetailsVisible}
@@ -713,9 +714,15 @@ const Orders = () => {
             Close
           </Button>
         ]}
-        width={800}
+        width={1000}
+        style={{ top: 20 }}
       >
-        {selectedOrder && (
+        {orderDetailsLoading ? (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16 }}>Loading order details...</div>
+          </div>
+        ) : selectedOrder ? (
           <div>
             {/* Basic Order Information */}
             <Card title="Order Information" size="small" style={{ marginBottom: 16 }}>
@@ -791,6 +798,7 @@ const Orders = () => {
 
             {/* Additional Information */}
             {selectedOrder.notes && (
+              <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
               <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
                 <Text>{selectedOrder.notes}</Text>
               </Card>

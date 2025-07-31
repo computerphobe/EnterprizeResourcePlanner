@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 import {
   Form,
   Input,
@@ -104,7 +105,7 @@ const LoadInvoiceForm = ({ subTotal = 0, current = null, orderId = null, form })
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/order/${orderId}/details`, {
+        const res = await fetch(`${API_BASE_URL}order/${orderId}/details`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

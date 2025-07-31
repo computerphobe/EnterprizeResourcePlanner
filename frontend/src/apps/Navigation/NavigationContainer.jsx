@@ -166,30 +166,10 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/doctor/orders'}>{translate('orders')}</Link>,
         },
         {
-          key: 'delivery',
-          icon: <CarOutlined />,
-          label: <Link to={'/doctor/delivery'}>{translate('delivery')}</Link>,
-        },
-        {
-          key: 'history',
-          icon: <HistoryOutlined />,
-          label: <Link to={'/doctor/history'}>{translate('history')}</Link>,
-        },
-        {
           key: 'salesbill',
           icon: <FileTextOutlined />,
           label: <Link to={'/doctor/salesbill'}>{translate('sales_bill')}</Link>,
         },
-        {
-          key: 'returns',
-          icon: <RollbackOutlined />,
-          label: <Link to={'/doctor/returns'}>{translate('returns')}</Link>,
-        },
-        {
-          key: 'inventory',
-          label: <Link to={'/inventory'}>{translate('inventory')}</Link>,
-          icon: <TagsOutlined />,
-        }
       ],
       hospital: [
         {

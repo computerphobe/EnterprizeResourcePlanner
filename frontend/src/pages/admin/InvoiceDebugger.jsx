@@ -3,6 +3,7 @@ import { Input, Button, Card, Table, Tabs, Tag, Space, Typography, message, Moda
 import { SearchOutlined, EyeOutlined, FilePdfOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 
 const { Title, Text } = Typography;
 
@@ -22,7 +23,7 @@ const InvoiceDebugger = () => {
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/client-invoices/${clientId.trim()}`, {
+      const response = await fetch(`${API_BASE_URL}admin/client-invoices/${clientId.trim()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

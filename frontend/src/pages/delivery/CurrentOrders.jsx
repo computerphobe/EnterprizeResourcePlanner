@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 import { 
   Table, 
   Button, 
@@ -64,7 +65,7 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
 
     const fetchOrders = async () => {
       try {
-        const response = await fetch('/api/order/current', {
+        const response = await fetch(`${API_BASE_URL}order/current`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -183,8 +184,8 @@ const CurrentOrders = () => {  const [orders, setOrders] = useState([]);
       }
 
       const endpoint = verificationType === 'pickup'
-        ? `/api/order/${selectedOrderForAction._id}/mark-pickup`
-        : `/api/order/${selectedOrderForAction._id}/mark-delivered`;
+        ? `${API_BASE_URL}order/${selectedOrderForAction._id}/mark-pickup`
+        : `${API_BASE_URL}order/${selectedOrderForAction._id}/mark-delivered`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
