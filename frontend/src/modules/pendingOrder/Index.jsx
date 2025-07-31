@@ -3,6 +3,7 @@ import { Table, Button, Tag, Spin, Typography, message } from 'antd';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { selectAuth } from '@/redux/auth/selectors';
+import { API_BASE_URL } from '@/config/serverApiConfig';
 
 const { Title } = Typography;
 
@@ -16,7 +17,7 @@ const PendingOrders = () => {
   useEffect(() => {
     const fetchPendingOrders = async () => {
       try {
-        const res = await fetch('/api/order/pending-invoice', {
+        const res = await fetch(`${API_BASE_URL}order/pending-invoice`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

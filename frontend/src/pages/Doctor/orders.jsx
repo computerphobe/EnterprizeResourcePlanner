@@ -799,7 +799,6 @@ const Orders = () => {
             {/* Additional Information */}
             {selectedOrder.notes && (
               <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
-              <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
                 <Text>{selectedOrder.notes}</Text>
               </Card>
             )}
@@ -1031,6 +1030,10 @@ const Orders = () => {
                 )}
               </>
             )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <Text>No order data available</Text>
           </div>
         )}
       </Modal>
