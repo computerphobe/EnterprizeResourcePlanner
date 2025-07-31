@@ -243,10 +243,6 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/current-orders'}>{translate('current_orders')}</Link>,
         },
         {
-          key: 'delivery-pickup',
-          icon: <FileSyncOutlined />,
-          label: <Link to={'/pickup'}>{translate('pickup_confirmation')}</Link>,
-        },        {
           key: 'delivery-confirmation',
           icon: <ReconciliationOutlined />,
           label: <Link to={'/confirmation'}>{translate('collect_returns')}</Link>,

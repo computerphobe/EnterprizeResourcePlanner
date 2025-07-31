@@ -214,6 +214,7 @@ const assignDeliverer = async (req, res) => {
     const { delivererId } = req.body;
 
     const deliverer = await Admin.findById(delivererId);
+    console.log(deliverer)
     if (!deliverer || deliverer.role !== 'deliverer') {
       return res.status(400).json({ success: false, message: 'Invalid deliverer ID or role' });
     }
@@ -1309,6 +1310,110 @@ const createDoctorOrder = async (req, res) => {
   }
 };
 
+// Get detailed doctor order by ID (for viewing specific order with verification photos)
+const getDoctorOrderDetails = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const doctorId = req.user._id;
+
+    console.log('🔍 [Backend] getDoctorOrderDetails called:', { 
+      orderId, 
+      doctorId, 
+      userRole: req.user.role,
+      userInfo: { id: req.user._id, name: req.user.name }
+    });
+
+    // Validate ObjectId format
+    if (!orderId || !orderId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log('❌ [Backend] Invalid ObjectId format:', orderId);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order ID format'
+      });
+    }
+
+    console.log('🔍 [Backend] Searching for order with criteria:', {
+      _id: orderId,
+      orderType: 'doctor',
+      doctorId: doctorId
+    });
+
+    // Fetch the order with full population including verification data
+    const order = await Order.findOne({
+      _id: orderId,
+      orderType: 'doctor',
+      doctorId: doctorId
+    })
+      .populate('doctorId', 'name role email hospital')
+      .populate('delivererId', 'name role email phone')
+      .populate({
+        path: 'items.inventoryItem',
+        select: 'name itemName productName sku code description price category batchNumber expiryDate manufacturer'
+      })
+      .populate({
+        path: 'items.substitutions.returnId',
+        populate: {
+          path: 'originalItemId',
+          select: 'itemName category batchNumber expiryDate price'
+        }
+      })
+      .populate('items.substitutions.substitutedBy', 'name role')
+      .populate('assignedHospitalOrganization', 'name address phone')
+      .lean();
+
+    console.log('🔍 [Backend] Order search result:', {
+      found: !!order,
+      orderNumber: order?.orderNumber,
+      orderType: order?.orderType,
+      doctorMatch: order?.doctorId?.toString() === doctorId.toString()
+    });
+
+    if (!order) {
+      // Let's also check if the order exists at all (regardless of doctor)
+      const anyOrder = await Order.findById(orderId).lean();
+      console.log('🔍 [Backend] Order exists but access denied:', {
+        orderExists: !!anyOrder,
+        actualOrderType: anyOrder?.orderType,
+        actualDoctorId: anyOrder?.doctorId
+      });
+      
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found or access denied'
+      });
+    }
+
+    console.log('✅ [Backend] Doctor order details found:', {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      itemCount: order.items?.length || 0,
+      hasPickupVerification: !!order.pickupVerification,
+      hasDeliveryVerification: !!order.deliveryVerification
+    });
+
+    // Ensure verification objects exist even if empty
+    if (!order.pickupVerification) {
+      order.pickupVerification = {};
+    }
+    if (!order.deliveryVerification) {
+      order.deliveryVerification = {};
+    }
+
+    res.json({
+      success: true,
+      result: order,
+      message: 'Order details retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ [Backend] Error fetching doctor order details:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching order details'
+    });
+  }
+};
+
 // NEW: Get all completed orders for return collection (any deliverer can collect returns)
 const getAllCompletedOrdersForReturns = async (req, res) => {
   try {
@@ -1482,6 +1587,7 @@ module.exports = {  assignDeliverer,
   createHospitalOrder,
   doctorOrders,
   createDoctorOrder,
+  getDoctorOrderDetails, // NEW: Get specific doctor order with verification data
   getOrderById, // Expose the new fallback endpoint
   getAllCompletedOrdersForReturns, // NEW: Endpoint to get all completed orders for return collection
   generateOrderPdf // NEW: PDF generation endpoint

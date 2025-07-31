@@ -462,6 +462,17 @@ router.route('/doctor/orders')
 router.route('/doctor/orders/create')
   .post(authenticateToken, roleMiddleware(['doctor']), catchErrors(orderController.createDoctorOrder));
 
+// Get specific doctor order details with verification data
+router.route('/doctor/orders/:orderId')
+  .get(authenticateToken, roleMiddleware(['doctor']), (req, res, next) => {
+    console.log('🔍 [Backend] Doctor order details route hit:', {
+      orderId: req.params.orderId,
+      userRole: req.user?.role,
+      userId: req.user?._id
+    });
+    next();
+  }, catchErrors(orderController.getDoctorOrderDetails));
+
 // 🧠 Register all dynamic entity-based routes
 routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];

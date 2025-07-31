@@ -105,12 +105,16 @@ const OrderList = () => {
   // Fetch deliverers
   const fetchDeliverers = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}admin/list`, {
+      // Request a large page size to get all deliverers in one request
+      const res = await fetch(`${API_BASE_URL}admin/list?items=100`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log("orderlist console log",data)
       if (!data.success) throw new Error(data.message);
       const delivererUsers = data.result.filter((user) => user.role === 'deliverer');
+      console.log(`✅ Fetched ${data.result.length} total users, ${delivererUsers.length} deliverers`);
+      console.log('📊 Pagination info:', data.pagination);
       setDeliverers(delivererUsers);
     } catch (error) {
       message.error(error.message || 'Failed to load deliverers');

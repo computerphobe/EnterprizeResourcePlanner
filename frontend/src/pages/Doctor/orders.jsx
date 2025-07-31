@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, InputNumber, message, Input, Spin, Alert, Row, Col, Divider, Card, Descriptions, List } from 'antd';
-import { EyeOutlined, FilePdfOutlined, PlusOutlined, ReloadOutlined, WarningOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Tabs, Tag, Button, Space, Typography, Modal, Form, Select, InputNumber, message, Input, Spin, Alert, Row, Col, Divider, Card, Descriptions, List, Image, Badge } from 'antd';
+import { EyeOutlined, FilePdfOutlined, PlusOutlined, ReloadOutlined, WarningOutlined, DeleteOutlined, CheckCircleOutlined, CameraOutlined, ClockCircleOutlined, EnvironmentOutlined, EditOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { selectAuth } from '@/redux/auth/selectors';
 import { getAvailableInventoryForOrders } from '@/services/inventoryService';
@@ -36,17 +36,40 @@ const Orders = () => {
 
   const fetchOrders = async () => {
     try {
+      console.log('🔍 [DoctorOrders] Fetching orders...');
       const response = await fetch(`${API_BASE_URL}doctor/orders`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       const data = await response.json();
+      console.log('🔍 [DoctorOrders] Received orders data:', data);
+      
       if (data.success) {
+        console.log('✅ [DoctorOrders] Successfully loaded orders:', data.orders?.length || 0);
+        
+        // Log sample order structure for debugging
+        if (data.orders && data.orders.length > 0) {
+          const sampleOrder = data.orders[0];
+          console.log('📊 [DoctorOrders] Sample order structure:', {
+            id: sampleOrder._id,
+            orderNumber: sampleOrder.orderNumber,
+            itemsCount: sampleOrder.items?.length || 0,
+            sampleItem: sampleOrder.items?.[0] ? {
+              inventoryItem: sampleOrder.items[0].inventoryItem,
+              itemName: sampleOrder.items[0].inventoryItem?.itemName,
+              quantity: sampleOrder.items[0].quantity
+            } : null
+          });
+        }
+        
         setOrders(data.orders);
+      } else {
+        console.error('❌ [DoctorOrders] Failed to fetch orders:', data.message);
+        message.error(data.message || 'Failed to fetch orders');
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ [DoctorOrders] Error fetching orders:', error);
       message.error('Failed to fetch orders');
     } finally {
       setLoading(false);
@@ -101,13 +124,28 @@ const Orders = () => {
     {
       title: 'Items',
       dataIndex: 'items',
-      key: 'items', render: (items) => (
-        <span>
-          {Array.isArray(items) ?
-            items.map(item => item?.inventoryItem?.name || 'Unknown Item').join(', ') :
-            'No items'}
-        </span>
-      )
+      key: 'items',
+      render: (items) => {
+        if (!Array.isArray(items) || items.length === 0) {
+          return <span style={{ color: '#999' }}>No items</span>;
+        }
+        
+        const itemsList = items.map((item, index) => {
+          const itemName = item?.inventoryItem?.itemName || item?.itemName || `Item ${index + 1}`;
+          const quantity = item?.quantity || 0;
+          return `${itemName} (${quantity})`;
+        }).join(', ');
+        
+        return (
+          <div>
+            <Text>{itemsList}</Text>
+            <br />
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {items.length} item{items.length !== 1 ? 's' : ''}
+            </Text>
+          </div>
+        );
+      }
     },
     {
       title: 'Total Amount',
@@ -134,6 +172,39 @@ const Orders = () => {
       }
     },
     {
+      title: 'Photo Verification',
+      key: 'photoVerification',
+      render: (_, record) => {
+        const verification = getVerificationStatus(record);
+        
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <Badge 
+              count={verification.count} 
+              size="small" 
+              style={{ backgroundColor: verification.color }}
+              showZero={false}
+            >
+              <CameraOutlined 
+                style={{ 
+                  color: verification.color, 
+                  fontSize: '16px' 
+                }} 
+              />
+            </Badge>
+            <div style={{ 
+              fontSize: '10px', 
+              color: verification.color, 
+              marginTop: '2px',
+              fontWeight: '500'
+            }}>
+              {verification.text}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
@@ -156,9 +227,66 @@ const Orders = () => {
       )
     }
   ];
+  // Get photo verification status for display
+  const getVerificationStatus = (order) => {
+    const hasPickup = order.pickupVerification?.photo;
+    const hasDelivery = order.deliveryVerification?.photo;
+    const hasSignature = order.deliveryVerification?.customerSignature;
+    
+    if (order.status === 'completed') {
+      if (hasPickup && hasDelivery && hasSignature) {
+        return { status: 'complete', count: 2, color: '#52c41a', text: 'Complete' };
+      } else if (hasPickup || hasDelivery) {
+        return { status: 'partial', count: 1, color: '#faad14', text: 'Partial' };
+      } else {
+        return { status: 'missing', count: 0, color: '#ff4d4f', text: 'Missing' };
+      }
+    } else if (order.status === 'picked_up') {
+      if (hasPickup) {
+        return { status: 'pickup-verified', count: 1, color: '#1890ff', text: 'Pickup OK' };
+      } else {
+        return { status: 'pending', count: 0, color: '#d9d9d9', text: 'Pending' };
+      }
+    } else {
+      return { status: 'pending', count: 0, color: '#d9d9d9', text: 'Pending' };
+    }
+  };
+
   const handleViewOrder = (order) => {
-    setSelectedOrder(order);
-    setOrderDetailsVisible(true);
+    console.log('🔍 [DoctorOrders] Viewing order details for:', order._id);
+    // Fetch detailed order data including photo verification
+    fetchDetailedOrder(order._id);
+  };
+
+  // Fetch detailed order information including photo verification
+  const fetchDetailedOrder = async (orderId) => {
+    try {
+      console.log('🔍 [DoctorOrders] Fetching detailed order with verification data...');
+      setLoading(true);
+      
+      const response = await fetch(`${API_BASE_URL}doctor/orders/${orderId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log('🔍 [DoctorOrders] Detailed order response:', data);
+      
+      if (data.success && data.result) {
+        setSelectedOrder(data.result);
+        setOrderDetailsVisible(true);
+        console.log('✅ [DoctorOrders] Order details loaded with verification data');
+      } else {
+        console.error('❌ [DoctorOrders] Failed to fetch detailed order:', data.message);
+        message.error(data.message || 'Failed to fetch order details');
+      }
+    } catch (error) {
+      console.error('❌ [DoctorOrders] Error fetching detailed order:', error);
+      message.error('Failed to fetch order details');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closeOrderDetails = () => {
@@ -663,9 +791,237 @@ const Orders = () => {
 
             {/* Additional Information */}
             {selectedOrder.notes && (
-              <Card title="Order Notes" size="small">
+              <Card title="Order Notes" size="small" style={{ marginBottom: 16 }}>
                 <Text>{selectedOrder.notes}</Text>
               </Card>
+            )}
+
+            {/* Photo Verification Section */}
+            {(selectedOrder.pickupVerification || selectedOrder.deliveryVerification) && (
+              <>
+                <Divider orientation="left">
+                  <CameraOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  Photo Verification
+                </Divider>
+                
+                {/* Verification Status Summary */}
+                <Alert
+                  message="Verification Status"
+                  description={
+                    <div>
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <CheckCircleOutlined 
+                              style={{ 
+                                color: selectedOrder.pickupVerification?.photo ? '#52c41a' : '#d9d9d9',
+                                marginRight: '8px'
+                              }} 
+                            />
+                            <span>Pickup Verified: </span>
+                            <Tag color={selectedOrder.pickupVerification?.photo ? 'green' : 'default'}>
+                              {selectedOrder.pickupVerification?.photo ? 'YES' : 'NO'}
+                            </Tag>
+                          </div>
+                        </Col>
+                        <Col span={12}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <CheckCircleOutlined 
+                              style={{ 
+                                color: selectedOrder.deliveryVerification?.photo ? '#52c41a' : '#d9d9d9',
+                                marginRight: '8px'
+                              }} 
+                            />
+                            <span>Delivery Verified: </span>
+                            <Tag color={selectedOrder.deliveryVerification?.photo ? 'green' : 'default'}>
+                              {selectedOrder.deliveryVerification?.photo ? 'YES' : 'NO'}
+                            </Tag>
+                          </div>
+                        </Col>
+                      </Row>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <EditOutlined 
+                          style={{ 
+                            color: selectedOrder.deliveryVerification?.customerSignature ? '#52c41a' : '#d9d9d9',
+                            marginRight: '8px'
+                          }} 
+                        />
+                        <span>Customer Signature: </span>
+                        <Tag color={selectedOrder.deliveryVerification?.customerSignature ? 'green' : 'default'}>
+                          {selectedOrder.deliveryVerification?.customerSignature ? 'OBTAINED' : 'NOT OBTAINED'}
+                        </Tag>
+                      </div>
+                    </div>
+                  }
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+
+                {/* Pickup Verification */}
+                {selectedOrder.pickupVerification && (
+                  <Card 
+                    title={
+                      <div>
+                        <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                        Pickup Verification
+                      </div>
+                    }
+                    size="small" 
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Card 
+                          title="Pickup Photo" 
+                          size="small"
+                          style={{ textAlign: 'center' }}
+                        >
+                          {selectedOrder.pickupVerification.photo ? (
+                            <Image
+                              src={selectedOrder.pickupVerification.photo}
+                              alt="Pickup Verification"
+                              style={{ maxWidth: '100%', maxHeight: '300px' }}
+                              placeholder={
+                                <div style={{ padding: '50px' }}>
+                                  <CameraOutlined style={{ fontSize: '24px', color: '#ccc' }} />
+                                  <div>Loading photo...</div>
+                                </div>
+                              }
+                            />
+                          ) : (
+                            <div style={{ padding: '50px', color: '#999' }}>
+                              <CameraOutlined style={{ fontSize: '24px' }} />
+                              <div>No photo available</div>
+                            </div>
+                          )}
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Descriptions column={1} size="small" bordered>
+                          <Descriptions.Item label="Verification Time">
+                            <ClockCircleOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.pickupVerification.timestamp 
+                              ? new Date(selectedOrder.pickupVerification.timestamp).toLocaleString()
+                              : 'Not recorded'
+                            }
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Location">
+                            <EnvironmentOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.pickupVerification.location?.address || 'Not recorded'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Notes">
+                            <EditOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.pickupVerification.notes || 'No notes'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+                  </Card>
+                )}
+
+                {/* Delivery Verification */}
+                {selectedOrder.deliveryVerification && (
+                  <Card 
+                    title={
+                      <div>
+                        <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                        Delivery Verification
+                      </div>
+                    }
+                    size="small" 
+                    style={{ marginBottom: 16 }}
+                  >
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Card 
+                          title="Delivery Photo" 
+                          size="small"
+                          style={{ textAlign: 'center' }}
+                        >
+                          {selectedOrder.deliveryVerification.photo ? (
+                            <Image
+                              src={selectedOrder.deliveryVerification.photo}
+                              alt="Delivery Verification"
+                              style={{ maxWidth: '100%', maxHeight: '250px' }}
+                              placeholder={
+                                <div style={{ padding: '40px' }}>
+                                  <CameraOutlined style={{ fontSize: '24px', color: '#ccc' }} />
+                                  <div>Loading photo...</div>
+                                </div>
+                              }
+                            />
+                          ) : (
+                            <div style={{ padding: '40px', color: '#999' }}>
+                              <CameraOutlined style={{ fontSize: '24px' }} />
+                              <div>No photo available</div>
+                            </div>
+                          )}
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Card 
+                          title="Customer Signature" 
+                          size="small"
+                          style={{ textAlign: 'center' }}
+                        >
+                          {selectedOrder.deliveryVerification.customerSignature ? (
+                            <Image
+                              src={selectedOrder.deliveryVerification.customerSignature}
+                              alt="Customer Signature"
+                              style={{ maxWidth: '100%', maxHeight: '250px' }}
+                              placeholder={
+                                <div style={{ padding: '40px' }}>
+                                  <EditOutlined style={{ fontSize: '24px', color: '#ccc' }} />
+                                  <div>Loading signature...</div>
+                                </div>
+                              }
+                            />
+                          ) : (
+                            <div style={{ padding: '40px', color: '#999' }}>
+                              <EditOutlined style={{ fontSize: '24px' }} />
+                              <div>No signature available</div>
+                            </div>
+                          )}
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Descriptions column={1} size="small" bordered>
+                          <Descriptions.Item label="Customer Name">
+                            {selectedOrder.deliveryVerification.customerName || 'Not recorded'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Delivery Time">
+                            <ClockCircleOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.deliveryVerification.timestamp 
+                              ? new Date(selectedOrder.deliveryVerification.timestamp).toLocaleString()
+                              : 'Not recorded'
+                            }
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Location">
+                            <EnvironmentOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.deliveryVerification.location?.address || 'Not recorded'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Notes">
+                            <EditOutlined style={{ marginRight: 8 }} />
+                            {selectedOrder.deliveryVerification.notes || 'No notes'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+                  </Card>
+                )}
+
+                {/* No Verification Alert */}
+                {!selectedOrder.pickupVerification && !selectedOrder.deliveryVerification && (
+                  <Alert
+                    message="No Photo Verification Available"
+                    description="This order doesn't have any photo verification records. Photo verification is required for orders processed through the deliverer module."
+                    type="warning"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
