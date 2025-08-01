@@ -5,7 +5,14 @@ const { verifyAuth } = require('../../middlewares/authMiddleware'); // Adjust pa
 
 // For file upload middleware (like multer), if you use it
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/bills/' }); // or your config
+const upload = multer({ 
+  dest: 'uploads/bills/',
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit
+    files: 10, // Allow up to 10 files
+    fieldSize: 100 * 1024 * 1024, // 100MB field size
+  }
+});
 
 router.use(verifyAuth);
 

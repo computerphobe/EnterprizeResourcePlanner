@@ -1580,67 +1580,6 @@ const generateOrderPdf = async (req, res) => {
   }
 };
 
-// NEW: Get order details for doctor (with photo verification access)
-const getDoctorOrderDetails = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const doctorId = req.user.id;
-
-    console.log('Doctor requesting order details:', { orderId, doctorId });
-
-    // Validate ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid order ID format' 
-      });
-    }
-
-    // Find the order with full details including photo verification
-    const order = await Order.findById(orderId)
-      .populate('doctorId', 'name role email hospitalName')
-      .populate('delivererId', 'name role email')
-      .populate({
-        path: 'items.inventoryItem',
-        select: 'itemName category price expiryDate batchNumber manufacturer'
-      });
-
-    if (!order) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Order not found' 
-      });
-    }
-
-    // Authorization check - ensure doctor can only view their own orders
-    if (order.doctorId._id.toString() !== doctorId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied. You can only view your own orders.' 
-      });
-    }
-
-    console.log('Doctor order details found:', {
-      orderNumber: order.orderNumber,
-      hasPickupPhoto: !!order.pickupVerification?.photo,
-      hasDeliveryPhoto: !!order.deliveryVerification?.photo,
-      status: order.status
-    });
-
-    return res.json({ 
-      success: true, 
-      result: order 
-    });
-
-  } catch (error) {
-    console.error('Error fetching doctor order details:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Internal server error' 
-    });
-  }
-};
-
 // NEW: Hospital order details with photo verification access
 const getHospitalOrderDetails = async (req, res) => {
   try {
@@ -1728,10 +1667,8 @@ module.exports = {
   createHospitalOrder,
   doctorOrders,
   createDoctorOrder,
-  getDoctorOrderDetails, // NEW: Get specific doctor order with verification data
-  getOrderById, // Expose the new fallback endpoint
-  getDoctorOrderDetails, // NEW: Doctor order details with photo access
-  getHospitalOrderDetails, // NEW: Hospital order details with photo verification access
-  getAllCompletedOrdersForReturns, // NEW: Endpoint to get all completed orders for return collection
-  generateOrderPdf // NEW: PDF generation endpoint
+  getDoctorOrderDetails, // Get specific doctor order with verification data
+  getOrderById, // Fallback endpoint for basic order retrieval
+  getHospitalOrderDetails, // Hospital order details with photo verification access
+  generateOrderPdf // PDF generation endpoint
 };

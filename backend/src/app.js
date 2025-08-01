@@ -37,9 +37,19 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(compression());
+
+// Add timeout configuration for large file uploads
+app.use((req, res, next) => {
+  // Set timeout to 5 minutes for upload requests
+  if (req.url.includes('/upload') || req.url.includes('/createAndUpload') || req.url.includes('photo') || req.url.includes('signature')) {
+    req.setTimeout(5 * 60 * 1000); // 5 minutes
+    res.setTimeout(5 * 60 * 1000); // 5 minutes
+  }
+  next();
+});
 
 // Serve uploads folder statically (for delivery photos, etc.)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -119,7 +129,22 @@ app.use('/api', dashboardRoutes);
 
 // Handle Multer or image errors gracefully
 app.use((err, req, res, next) => {
-  if (err.name === 'MulterError' || err.message?.includes('Only JPEG, JPG, or PNG images')) {
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ 
+        error: 'File too large. Maximum file size is 100MB.',
+        code: 'FILE_TOO_LARGE'
+      });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ 
+        error: 'Too many files. Maximum 10 files allowed.',
+        code: 'TOO_MANY_FILES'
+      });
+    }
+    return res.status(400).json({ error: err.message });
+  }
+  if (err.message?.includes('Only JPEG, JPG, or PNG images')) {
     return res.status(400).json({ error: err.message });
   }
   next(err);
