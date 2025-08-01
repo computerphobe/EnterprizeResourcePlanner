@@ -23,8 +23,7 @@ const getClientLedger = async (req, res) => {
       removed: false,
       ...(req.admin?.organization && { organization: req.admin.organization })
     })
-    .populate('client', 'name email')
-    .populate('organization', 'name');
+    .populate('client', 'name email');
     
     console.log('🔍 [LEDGER] Found invoices:', invoices.length);
 
@@ -35,7 +34,9 @@ const getClientLedger = async (req, res) => {
       ...(req.admin?.organization && { organization: req.admin.organization })
     })
     .populate('client', 'name email')
-    .populate('organization', 'name');
+    .populate('invoice', 'number');
+    
+    console.log('🔍 [LEDGER] Found payments:', payments.length);
     
     console.log('🔍 [LEDGER] Found payments:', payments.length);
 
@@ -50,7 +51,6 @@ const getClientLedger = async (req, res) => {
         debit: inv.total || 0,
         credit: 0,
         client: inv.client,
-        organization: inv.organization,
       })),
       ...payments.map(pay => ({
         _id: pay._id,
@@ -62,7 +62,6 @@ const getClientLedger = async (req, res) => {
         debit: 0,
         credit: Math.abs(pay.amount || 0),
         client: pay.client,
-        organization: pay.organization,
       }))
     ];
 
